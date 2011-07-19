@@ -1,0 +1,512 @@
+#!/usr/bin/perl -w
+# ----------------------------------------------------------------------------
+# Name:  dra-delete
+# Desc:  Removes processed concert recordings from their remote stations
+#
+# Adam Wead
+# Jacobs School of Music
+# Indiana University
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+#
+# Setup libraries and packages
+#
+# ----------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+
+# ----------------------------------------------------------------------------
+#
+# Define script-wide variables
+#
+# ----------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+
+# Define all variables from our dra.conf file
+$config->define( "accessFileList=s"             );
+$config->define( "afconvert=s"                  );
+$config->define( "afpMount=s"                   );
+$config->define( "audioDir=s"                   );
+$config->define( "backupBlock=s"                );
+$config->define( "backupDir=s"                  );
+$config->define( "backupScriptLog=s"            );
+$config->define( "bitRate=s"                    );
+$config->define( "burnFolder=s"                 );
+$config->define( "burnList=s"                   );
+$config->define( "chmod=s"                      );
+$config->define( "chmodArgs=s"                  );
+$config->define( "chmodMode=s"                  );
+$config->define( "conversionErrorLog=s"         );
+$config->define( "conversionLog=s"              );
+$config->define( "copiedLog=s"                  );
+$config->define( "copy=s"                       );
+$config->define( "delBlock=s"                   );
+$config->define( "deleteScriptLog=s"            );
+$config->define( "email=s"                      );
+$config->define( "errorLog=s"                   );
+$config->define( "group=s"                      );
+$config->define( "hallList=s"                   );
+$config->define( "hsi=s"                        );
+$config->define( "hsiOpts=s"                    );
+$config->define( "hsiPorts=s"                   );
+$config->define( "htar=s"                       );
+$config->define( "htarOpts=s"                   );
+$config->define( "htarUser=s"                   );
+$config->define( "interestedAccessVideoExts=s"  );
+$config->define( "interestedPreservVideoExts=s" );
+$config->define( "iucat=s"                      );
+$config->define( "jira=s"                       );
+$config->define( "kdestroy=s"                   );
+$config->define( "keytab=s"                     );
+$config->define( "kinit=s"                      );
+$config->define( "kinitOpts=s"                  );
+$config->define( "libraryDirectory=s"           );
+$config->define( "libraryServer=s"              );
+$config->define( "libraryTemp=s"                );
+$config->define( "logDir=s"                     );
+$config->define( "mdssBlock=s"                  );
+$config->define( "mdssErrorLog=s"               );
+$config->define( "mdssExclude=s"                );
+$config->define( "mdssList=s"                   );
+$config->define( "mdssLog=s"                    );
+$config->define( "mdssScriptLog=s"              );
+$config->define( "mkdir=s"                      );
+$config->define( "mkdirArgs=s"                  );
+$config->define( "mount=s"                      );
+$config->define( "mountCommand=s"               );
+$config->define( "mountPoint=s"                 );
+$config->define( "mv=s"                         );
+$config->define( "normArgs=s"                   );
+$config->define( "normalize=s"                  );
+$config->define( "remove=s"                     );
+$config->define( "rsync=s"                      );
+$config->define( "rsyncArgs=s"                  );
+$config->define( "rsyncLog=s"                   );
+$config->define( "rsyncTranArgs=s"              );
+$config->define( "runLog=s"                     );
+$config->define( "sampleRate=s"                 );
+$config->define( "semester=s"                   );
+$config->define( "sender=s"                     );
+$config->define( "sentToBeBurnedLog=s"          );
+$config->define( "share=s"                      );
+$config->define( "smbPass=s"                    );
+$config->define( "smbUser=s"                    );
+$config->define( "specificExtsList=s"           );
+$config->define( "ssh=s"                        );
+$config->define( "sshKey=s"                     );
+$config->define( "sshOpts=s"                    );
+$config->define( "sshUser=s"                    );
+$config->define( "tempDir=s"                    );
+$config->define( "touch=s"                      );
+$config->define( "transBlock=s"                 );
+$config->define( "transScriptLog=s"             );
+$config->define( "umount=s"                     );
+$config->define( "umountArgs=s"                 );
+$config->define( "videoMAC=s"                   );
+$config->define( "videoMACMountPoint=s"         );
+$config->define( "videoMACVolume=s"             );
+$config->define( "videoPass=s"                  );
+$config->define( "videoUser=s"                  );
+
+
+# Command line switches
+$config->define("help!");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "dra.conf" );
+if ( !-e $confFile ) {
+    die "dra.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+
+# Define the variables we'll use
+my $mountPoint          = $config->get( "mountPoint"         );
+my $group               = $config->get( "group"              );
+my $user                = $config->get( "smbUser"            );
+my $pass                = $config->get( "smbPass"            );
+my $share               = $config->get( "share"              );
+my $mountCommand        = $config->get( "mountCommand"       );
+my $umount              = $config->get( "umount"             );
+my $umountArgs          = $config->get( "umountArgs"         );
+my $mount               = $config->get( "mount"              );
+my $mkdir               = $config->get( "mkdir"              );
+my $mkdirArgs           = $config->get( "mkdirArgs"          );
+my $log                 = $config->get( "deleteScriptLog"    );
+my $logDir              = $config->get( "logDir"             );
+my $remove              = $config->get( "remove"             );
+my $blockList           = $config->get( "delBlock"           );
+my $audioDir            = $config->get( "audioDir"           );
+my $semester            = $config->get( "semester"           );
+my $copiedLog           = $config->get( "copiedLog"          );
+my $errorLog            = $config->get( "errorLog"           );
+my $conversionLog       = $config->get( "conversionLog"      );
+my $conversionErrorLog  = $config->get( "conversionErrorLog" );
+my $sentToBeBurnedLog   = $config->get( "sentToBeBurnedLog"  );
+my $mdssErrorLog        = $config->get( "mdssErrorLog"       );
+my $mdssLog             = $config->get( "mdssLog"            );
+my $rsyncLog            = $config->get( "rsyncLog"           );
+my $backupDir           = $config->get( "backupDir"          );
+
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+# ----------------------------------------------------------------------------
+#
+# Do some stuff
+#
+# ----------------------------------------------------------------------------
+
+# Build paths to directories and files
+my $mpPath          = Path::Class::Dir->new($mountPoint);
+my $semesterPath    = Path::Class::Dir->new($audioDir, $semester);
+my $logFile         = Path::Class::File->new($logDir, $log);
+my $backupPath      = Path::Class::Dir->new($backupDir);
+
+
+# Build arrays of log types that we'll check for later
+my @errorLogs = (
+    $errorLog,
+    $conversionErrorLog,
+    $mdssErrorLog,
+);
+
+my @projectLogs = (
+    $copiedLog,
+    $conversionLog,
+    $sentToBeBurnedLog,
+    $mdssLog,
+    $rsyncLog,
+);
+
+
+# Start logging
+DRA::logger("Starting up...", $logFile);
+
+# Check our block list
+my $run = DRA::checkBlocks($blockList);
+if ($run) {
+    DRA::logger($run, $log);
+    croak($run);
+}
+
+# Check for mountpoint
+if (!-d $mpPath) {
+    system($mkdir, $mkdirArgs, $mpPath) == 0 
+        or croak "Failed to create mount point $mpPath: $? \n";
+}
+
+# Is this mounted? If so, unmount
+my $mountCheck = DRA::runCommand($mount);
+if ( $mountCheck =~ /$mpPath/ ) {
+    DRA::logger("Mount in use, forcibly unmounting...", $logFile);
+    system($umount, $umountArgs, $mpPath) == 0 
+        or croak "Failed to unmount $mpPath \n";
+    DRA::logger("Unmounted", $logFile);
+}
+
+# Build connection string
+my $connString = "\"//" 
+               . $group 
+               . ";" 
+               . $user 
+               . ":" 
+               . $pass
+               . "\@" 
+               . $share 
+               . "\""
+               ;
+
+# Mount remote share
+# Can't seem to fork this command, so we'll use backticks (Bugger!)
+# TODO: find a way to do this without using the password in clear text
+my $command = join(" ", $mountCommand, $connString, $mpPath, "2>&1");
+DRA::logger("Connecting to share $share", $logFile);
+my $results = `$command`;
+if ($results) {
+    chomp $results;
+    DRA::logger("Connection failed: $results", $logFile);
+    DRA::logger("Script will now terminate", $logFile);
+    croak "Caught error mounting $share : $results";
+}
+
+
+# Gather list of project directories on the remote station and compile list of
+# directories to check on the server
+my @remoteDirs = DRA::readDirectory( $mpPath );
+my @localDirs;
+foreach my $remoteDir (@remoteDirs) {
+
+    # Using the name of the remote directory, see if it exists on the local
+    # server
+    my $localPath = Path::Class::Dir->new($semesterPath, $remoteDir);
+    if ( -e $localPath ) {
+        push @localDirs, $remoteDir;
+    }
+
+}
+
+if (! @localDirs ) {
+    my $message 
+        = "No project directories found on the server for the share: "
+        . $share;
+    DRA::logger($message, $logFile);
+}
+
+foreach my $projectDir (@localDirs) {
+
+    my @errorLogsFound;
+    my @logsNeeded;
+
+    DRA::logger("Checking $projectDir on $share", $logFile);
+    my $projectLogPath = Path::Class::Dir->new(
+        $semesterPath,
+        $projectDir, 
+        "access", 
+        "logs"
+    );
+
+    # Check for presence of any error logs
+    foreach my $errorLog (@errorLogs) {
+        my $file = Path::Class::File->new($projectLogPath, $errorLog);
+        if ( -e $file ) {
+            push @errorLogsFound, $errorLog;
+        }
+    }
+
+    # Check for absence of any project logs
+    foreach my $log (@projectLogs) {
+        my $file = Path::Class::File->new($projectLogPath, $log);
+        if ( (! -e $file) and (-e $projectLogPath) ) {
+            push @logsNeeded, $log;
+        }
+    }
+
+    # Check the age of the logs...anything less than 24 hours, we skip the
+    # process
+    my $age = DRA::checkAge($projectLogPath);
+
+    # Evaluate results and delete appropriate projects
+    if (@errorLogsFound) {
+
+        my $line = join ", ", @errorLogsFound;
+        my $message
+            = "... project is incomplete. "
+            . "The following error logs were found: "
+            . $line;
+        DRA::logger($message, $logFile);
+
+    }
+    elsif (@logsNeeded) {
+
+        my $line = join ", ", @logsNeeded;
+        my $message
+            = "...project is incomplete. "
+            . "We still need the following logs: "
+            . $line;
+        DRA::logger($message, $logFile);
+
+    }
+    elsif ($age < 24) {
+        
+        my $message
+            = "...project is complete, but one of "
+            . "the log files is only $age "
+            . "hours old.  We'll wait another "
+            . "day before we delete anything.";
+        DRA::logger($message, $logFile);
+
+    }    
+    else {
+
+        DRA::logger("... project checks out. We can delete it", $logFile);
+        my $remoteDirPath = Path::Class::Dir->new($mpPath, $projectDir);
+        my $backupDirPath = Path::Class::Dir->new($backupPath, $projectDir);
+        DRA::logger("... removing from remote station", $logFile);
+        system($remove, "-R", "-f", $remoteDirPath) == 0
+            or croak "Failed to remove $projectDir from remote station";
+        DRA::logger("... removing from backup folder", $logFile);
+        system($remove, "-R", "-f", $backupDirPath) == 0
+            or croak "Failed to remove $projectDir from backup folder";
+
+    }
+
+    DRA::logger("... done!", $logFile);
+
+}
+
+
+# Unmount share and exit
+DRA::logger("Delete script complete, unmounting share", $logFile);
+system($umount, $umountArgs, $mpPath) == 0 
+    or croak "Failed to unmount $mpPath \n";
+DRA::logger("Exiting.", $logFile);
+exit 0;
+
+
+# ----------------------------------------------------------------------------
+#
+# Subroutines
+#
+# ----------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+    }
+
+    &main::help;
+    exit 0;
+}
+
+sub help {
+    print "Usage: dra-delete [-help] [dra.conf options]\n";
+}
+
+
+__END__
+
+=head1 DRA-DELETE
+
+dra-delete - removes completed audio projects from their remote stations
+
+=head1 VERSION
+
+This documentation refers to dra-delete version 2.0
+
+=head1 USAGE
+
+B<dra-delete [-help] [dra.conf options]>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+
+-[variable name] [value]
+
+Example:
+
+B<-mountPoint>
+
+Full path to the location where the samba share should be mounted. This should
+be specified in the dra.conf file and left unchanged.
+
+B<-group>
+
+When connecting to samba shares over the network, the client initiating the
+connection will need to specify under which group the connecting user's
+credentials are found. This is usually the local group on the computer hosting
+the samba share such as BL-MUS-[NAME] and should distinguish a local user
+account versus a network account under the ADS network directory.
+
+B<-smbUser>
+
+The username that as acces to the specified share on the hosting computer.
+
+B<-smbPass>
+
+The password for the above user. Note: if the password is given in a script, it
+will be readable.
+
+B<-share>
+
+The fully-qualified domain name of the computer hosting the samba share and the
+name of the share.  Format should be: [computer_name]/[share_name].  See above
+examples.
+
+=head1 DESCRIPTION
+
+Similar to the dra-backup script, dra-delete access remote recording stations
+except to remove complete project files.
+
+The dra-delete script compares any project directories on a remote station
+to directories found locally on the server. If a project has finished
+processing without any errors, the script will remove the project from
+the remote station as well as from the backup folder on the local
+server.
+
+A project is considered finished when all four project logs exist:
+copied log, conversion log, burned log and mdss log; and there
+are no error logs.
+
+=head1 DIAGNOSTICS
+
+Upon successful execution, the application with exit with no output. Any fatal
+error will be written to standard output and the application ceases immediately.
+
+The most common failures would be: 1) the presence of any blocking processes as
+listed in the dra.conf file, 2) an unavailable mount point on the client
+machine, 3) an unavailable share on the remote station, 4) incorrect credentials
+for accessing the samba share on the host computer, and 5) absence of the
+DRA_HOME environment variable.
+
+Detailed information about other non-fatal errors will be found in the
+application log under the log directory.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+Once properly configured with the dra.conf file, only a minimal number of
+options need to be specified such as different remote shares, groups, and/or
+users and passwords.
+
+A default username and password can be specified in the dra.conf file and then
+overridden at execution time with the appropriate switch passed via the command
+line.
+
+The DRA_HOME environment variable is required and can be set on a per-user basis
+or at execution time.  For example:
+
+B<DRA_HOME=/usr/local/audio dra-delete [options]>
+
+=head1 DEPENDENCIES
+
+All required modules are found under DRA_HOME/lib and other assisting scripts
+are found under DRA_HOME/tools
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2010, the Trustees of Indiana University.
+
+=cut
+

@@ -1,0 +1,794 @@
+#!/usr/bin/perl -w
+# ----------------------------------------------------------------------------
+# Name:  dra-mdss
+# Desc:  Sends a project folder to mdss for archiving
+# Args:  Project folder
+#
+# Adam Wead
+# Jacobs School of Music
+# Indiana University
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+#
+# Setup libraries and packages
+#
+# ----------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+use Storable;
+
+# ----------------------------------------------------------------------------
+#
+# Define application-wide variables
+#
+# ----------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+# Define all dra.conf variables
+$config->define( "accessFileList=s"             );
+$config->define( "afconvert=s"                  );
+$config->define( "afpMount=s"                   );
+$config->define( "audioDir=s"                   );
+$config->define( "backupBlock=s"                );
+$config->define( "backupDir=s"                  );
+$config->define( "backupScriptLog=s"            );
+$config->define( "bitRate=s"                    );
+$config->define( "burnFolder=s"                 );
+$config->define( "burnList=s"                   );
+$config->define( "chmod=s"                      );
+$config->define( "chmodArgs=s"                  );
+$config->define( "chmodMode=s"                  );
+$config->define( "conversionErrorLog=s"         );
+$config->define( "conversionLog=s"              );
+$config->define( "copiedLog=s"                  );
+$config->define( "copy=s"                       );
+$config->define( "delBlock=s"                   );
+$config->define( "deleteScriptLog=s"            );
+$config->define( "email=s"                      );
+$config->define( "errorLog=s"                   );
+$config->define( "group=s"                      );
+$config->define( "hallList=s"                   );
+$config->define( "hsi=s"                        );
+$config->define( "hsiOpts=s"                    );
+$config->define( "hsiPorts=s"                   );
+$config->define( "htar=s"                       );
+$config->define( "htarOpts=s"                   );
+$config->define( "htarUser=s"                   );
+$config->define( "interestedAccessVideoExts=s"  );
+$config->define( "interestedPreservVideoExts=s" );
+$config->define( "iucat=s"                      );
+$config->define( "jira=s"                       );
+$config->define( "kdestroy=s"                   );
+$config->define( "keytab=s"                     );
+$config->define( "kinit=s"                      );
+$config->define( "kinitOpts=s"                  );
+$config->define( "libraryDirectory=s"           );
+$config->define( "libraryServer=s"              );
+$config->define( "libraryTemp=s"                );
+$config->define( "logDir=s"                     );
+$config->define( "mdssBlock=s"                  );
+$config->define( "mdssErrorLog=s"               );
+$config->define( "mdssExclude=s"                );
+$config->define( "mdssList=s"                   );
+$config->define( "mdssLog=s"                    );
+$config->define( "mdssScriptLog=s"              );
+$config->define( "mkdir=s"                      );
+$config->define( "mkdirArgs=s"                  );
+$config->define( "mount=s"                      );
+$config->define( "mountCommand=s"               );
+$config->define( "mountPoint=s"                 );
+$config->define( "mv=s"                         );
+$config->define( "normArgs=s"                   );
+$config->define( "normalize=s"                  );
+$config->define( "remove=s"                     );
+$config->define( "rsync=s"                      );
+$config->define( "rsyncArgs=s"                  );
+$config->define( "rsyncLog=s"                   );
+$config->define( "rsyncTranArgs=s"              );
+$config->define( "runLog=s"                     );
+$config->define( "sampleRate=s"                 );
+$config->define( "semester=s"                   );
+$config->define( "sender=s"                     );
+$config->define( "sentToBeBurnedLog=s"          );
+$config->define( "share=s"                      );
+$config->define( "smbPass=s"                    );
+$config->define( "smbUser=s"                    );
+$config->define( "specificExtsList=s"           );
+$config->define( "ssh=s"                        );
+$config->define( "sshKey=s"                     );
+$config->define( "sshOpts=s"                    );
+$config->define( "sshUser=s"                    );
+$config->define( "tempDir=s"                    );
+$config->define( "touch=s"                      );
+$config->define( "transBlock=s"                 );
+$config->define( "transScriptLog=s"             );
+$config->define( "umount=s"                     );
+$config->define( "umountArgs=s"                 );
+$config->define( "videoMAC=s"                   );
+$config->define( "videoMACMountPoint=s"         );
+$config->define( "videoMACVolume=s"             );
+$config->define( "videoPass=s"                  );
+$config->define( "videoUser=s"                  );
+
+# Command line switches
+$config->define("f!");
+$config->define("help!");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "dra.conf" );
+if ( !-e $confFile ) {
+    die "dra.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+# Initialize on ly the variables we'll be using here
+my $blockList    = $config->get( "mdssBlock"        );
+my $log          = $config->get( "mdssScriptLog"    );
+my $scriptLog    = $config->get( "logDir"           );
+my $transError   = $config->get( "errorLog"         );
+my $transLog     = $config->get( "copiedLog"        );
+my $mdssError    = $config->get( "mdssErrorLog"     );
+my $mdssLog      = $config->get( "mdssLog"          );
+my $hsi          = $config->get( "hsi"              );
+my $htar         = $config->get( "htar"             );
+my $hsiOptLine   = $config->get( "hsiOpts"          );
+my $keytab       = $config->get( "keytab"           );
+my $mv           = $config->get( "mv"               );
+my $exclude      = $config->get( "mdssExclude"      );
+my $semester     = $config->get( "semester"         );
+my $remove       = $config->get( "remove"           );
+my $hsiPorts     = $config->get( "hsiPorts"         );
+my $tempDir      = $config->get( "tempDir"          );
+my $kinit        = $config->get( "kinit"            );
+my $kinitOptLine = $config->get( "kinitOpts"        );
+my $kdestroy     = $config->get( "kdestroy"         );
+my $htarOptLine  = $config->get( "htarOpts"         );
+my $htarUser     = $config->get( "htarUser"         );
+
+# Initialize command line switches
+my $force        = $config->get("f");
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+# Check input
+if (! $ARGV[0]) {
+    main::error("No folder specified"); 
+}
+my $projectDir = Path::Class::Dir->new($ARGV[0]);
+if (! -d $projectDir) {
+    main::error("Specified folder does not exist");
+}
+            
+# Check our block list
+my $run = DRA::checkBlocks($blockList);
+if ($run) {
+    croak($run);
+}
+
+
+
+# ----------------------------------------------------------------------------
+#
+# Do some stuff
+#
+# ----------------------------------------------------------------------------
+
+# Build paths to the necessary directories
+my $accessDir = Path::Class::Dir->new($projectDir, "access");
+my $logDir    = Path::Class::Dir->new($accessDir, "logs");
+
+
+# Build paths to necessary files
+my $logFile 
+    = Path::Class::File->new($scriptLog, $log);
+my $transferErrorLog
+    = Path::Class::File->new($logDir, $transError);
+my $mdssErrorLog
+    = Path::Class::File->new($logDir, $mdssError);
+my $mdssTransferLog
+    = Path::Class::File->new($logDir, $mdssLog);
+my $transferLog
+    = Path::Class::File->new($logDir, $transLog);
+my $keytabFile 
+    = Path::Class::File->new( $ENV{DRA_HOME}, "conf", $keytab );
+
+# Sanity checks:  make sure we have an access directory
+die "No log directory found, aborting! \n" 
+    if (! -d $logDir);
+
+# Start logging
+DRA::logger(
+    "MDSS script starting up, processing $projectDir", 
+    $logFile
+);
+
+# Check the force option
+if ( $force ) {
+    my $message
+        = "MDSS transfer forced. We're doing it over again!";
+    DRA::logger($message, $logFile);
+}
+else {
+
+    # Check to see if this directory is ready for MDSS
+    if ( (-e $transferErrorLog) or (! -e $transferLog) ) {
+        my $message
+            = "Concert was not successfully sent to the library. "
+            . "Skipping this project directory for now.";
+        DRA::logger($message, $logFile);
+        exit 0;
+    }
+    elsif ( (-e $mdssTransferLog) and (! -e $mdssErrorLog) ) {
+        my $message
+            = "This project has already been archived in MDSS. "
+            . "No further actions will take place.";
+        DRA::logger($message, $logFile);
+        exit 0;
+    }
+    else {
+        my $message
+            = "First time transfer. The directory looks good";
+        DRA::logger($message, $logFile);
+    }
+
+}
+
+# Grab the data file
+# Note: I'm getting lazy here... the getMDSSNames routine should only write
+# one file ending in .dat -- so we're not doing any checking here.
+my $data;
+my $id       = DRA::getVarid($projectDir);
+my $datafile = $id . "_MDSSFileData.dat";
+my $dataPath = Path::Class::File->new($logDir, $datafile);
+DRA::logger("Getting datafile $datafile", $logFile);
+if (-e $dataPath) {
+    $data = retrieve $dataPath;
+    if (!$data) {
+        DRA::logger("Error reading datafile! Exiting...", $logFile);
+        croak "Couldn't read the MDSS data file ! \n";
+    }
+}
+else {
+    DRA::logger("No data file found! Exiting...", $logFile);
+    croak "No MDSS data file! \n";
+}
+
+# Rename files and folders in the project directory
+DRA::logger("Renaming files and folders in the root folder", $logFile);
+my @pfiles = DRA::readDirectory($projectDir);
+foreach my $pfile (@pfiles) {
+
+    # Skip over any file that:
+    #  1. is in our exclude list
+    #  2. is named access -- that's dealt with later
+    #  3. has already been renamed
+    if (    ($exclude !~ /$pfile/) 
+        and ($pfile   !~ /^access$/) 
+        and ($pfile   !~ /^$data->{'prefix'}/)
+    ) {
+        
+        my $path = Path::Class::Dir->new($projectDir, $pfile);
+        my $newname
+            = $data->{'prefix'}
+            . "_"
+            . $pfile
+            ;
+        
+        # Assume it's a directory...
+        if (-d $path) {
+            my $newPath = Path::Class::Dir->new($projectDir, $newname);
+            my @args    = ($path, $newPath);
+            system($mv, @args) == 0
+                or croak "Failed to rename $pfile !\n";
+        }
+        else {
+            my $oldFile = Path::Class::File->new($projectDir, $pfile);
+            my $newFile = Path::Class::File->new($projectDir, $newname);
+            my @args    = ($oldFile, $newFile);
+            system($mv, @args) == 0
+                or croak "Failed to rename $pfile !\n";
+        }
+
+    }
+    else {
+        
+        my $message 
+            = "Skipping $pfile : it's either already renamed, "
+            . "excluded or being dealt with in the access folder";
+        DRA::logger($message, $logFile);
+
+    }
+
+}
+
+# Rename only files in the access directory
+DRA::logger("Renaming files and folders in the access folder", $logFile);
+my @afiles = DRA::readDirectory($accessDir);
+foreach my $afile (@afiles) {
+
+    # Assume files only in here
+    my $path = Path::Class::File->new($accessDir, $afile);
+    if ((! -d $path) 
+        and ($exclude !~ /$afile/) 
+        and ($afile   !~ /^$data->{'prefix'}/)
+    ) {
+        my $newname
+            = $data->{'prefix'}
+            . "_"
+            . $afile
+            ;
+        my $newPath = Path::Class::File->new($accessDir, $newname);
+        my @args = ($path, $newPath);
+        system($mv, @args) == 0
+            or croak "Failed to rename $afile !\n";
+    }
+    else {
+        
+        my $message 
+            = "Skipping $afile : it's either already renamed or excluded";
+        DRA::logger($message, $logFile);
+
+    }
+
+}
+
+
+# Start our error tracking and delete previous error log if it exists
+my @errors;
+if (-e $mdssErrorLog) {
+    DRA::logger("Removing previous MDSS error log", $logFile);
+    system($remove, $mdssErrorLog) == 0
+        or die "That really shouldn't have happened...\n";
+}
+else {
+    DRA::logger("No error log found, must be the first try", $logFile);
+}
+
+
+# Check file list
+DRA::logger("Checking list of files from data file...", $logFile);
+foreach my $file (@{$data->{'preservation'}}) {
+    my $path = Path::Class::File->new($projectDir, $file);
+    if (! -e $path) {
+        my $message 
+            = "Preservation file [$file] not found. " 
+            . "It's supposed to be here!";
+        push @errors, $message;
+    }
+}
+foreach my $file (@{$data->{'access'}}) {
+    my $path = Path::Class::File->new($accessDir, $file);
+    if (! -e $path) {
+        my $message 
+            = "Access file [$file] not found. " 
+            . "It's supposed to be here!";
+        push @errors, $message;
+    }
+}
+
+# Evaluate
+if (@errors) {
+    DRA::logger("Check failed.  See error log.", $logFile);
+    my $line = join "\n", @errors;
+    DRA::logger($line, $mdssErrorLog);
+    croak(
+        qq{File check failed!\n},
+        $line,
+    );
+}
+
+
+# Create remote directories on MDSS
+DRA::logger("Preparing to transfer files to MDSS", $logFile);
+my $datedDir = DRA::getProject($projectDir);
+if (! $datedDir) {
+    croak "Malformed project directory; aborting! \n";
+}
+my $remoteProjectDir = Path::Class::Dir->new($semester, $datedDir);
+my @hsiOpts   = split / /, $hsiOptLine;
+my @opts = (@hsiOpts, $keytabFile, "mkdir", "-p", $remoteProjectDir);
+
+# Hsi command outputs to stderr for some reason, even when it works so we'll
+# check the error code
+my ($stdout, $stderr, $success, $exit_code) =
+    IO::CaptureOutput::capture_exec($hsi, @opts);
+if ( $exit_code > 0 or !$success ) {
+    my $message
+        = "Failed to create project directory on MDSS server. "
+        . "Exit code [$exit_code] "
+        . "Error = [$stderr] "
+        . "Output = [$stdout]"
+        ;
+    croak $message;
+}
+else {
+    DRA::logger("Created project directory on MDSS", $logFile);
+}
+
+# Send files under project directory and access directory to the same location
+DRA::logger("Processing project directory, sending files via hsi...", $logFile);
+foreach my $file (@{$data->{'preservation'}}) {
+    my $error = main::sendFiles($projectDir, $remoteProjectDir, $file);
+    if ($error) {
+        push @errors, $error;
+    }
+}
+
+foreach my $file (@{$data->{'access'}}) {
+    
+    # Only copy the wave files... the other stuff was copied from the
+    # preservation directory
+    if ($file =~ /wav$/) {
+        my $error = main::sendFiles($accessDir, $remoteProjectDir, $file);
+        if ($error) {
+            push @errors, $error;
+        }
+    }
+
+}
+
+# Evaluate transfer errors
+if (@errors) {
+    DRA::logger("Failed! Check MDSS error log", $logFile);
+    my $line = join " \n", @errors;
+    DRA::logger($line, $mdssErrorLog);
+    croak "MDSS script failed:\n $line \n";
+}
+else {
+    DRA::logger("Done.", $logFile);
+}
+
+
+# Send any directories in the project directory via htar
+DRA::logger("Checking for subfolders...", $logFile);
+foreach my $file (@{$data->{'tar'}}) {
+
+    my ($name, $ext) = split /\./, $file;
+    DRA::logger("Sending directory $name via htar ...", $mdssTransferLog);
+    my $src = Path::Class::Dir->new($projectDir, $name);
+    if (-d $src) {
+
+        # Saftey check: make sure we don't tranfer empty directories. We could
+        # be accidentally tranferring a directory that already was
+        # transferred.  Htar removes the contents after a transfer.
+        # Retransfering an empty directory overrites the exising archive with
+        # an empty one. Not cool...
+        my @contents = DRA::readDirectory($src);
+        if (@contents) {
+
+            # Assume htar will fail.
+            # We create a mdss_error.log file first, and delete it upon
+            # success.
+            my $placeHolder = "PLACEHOLDER: running htar send";
+            DRA::logger($placeHolder, $mdssErrorLog);
+
+            my $remotePath = Path::Class::File->new($remoteProjectDir, $file);
+            my ($error, $htarMessage) = DRA::htarSend(
+                {
+                src       => $name,
+                parent    => $projectDir,
+                dest      => $remotePath,
+                htar      => $htar,
+                htarOpts  => $htarOptLine,
+                keytab    => $keytabFile,
+                user      => $htarUser,
+                ports     => $hsiPorts,
+                }
+            );
+            if ($error) {
+                DRA::logger("Failed! Check MDSS error log", $mdssTransferLog);
+                push @errors, $htarMessage;
+            }
+            else {
+                my $message
+                    = "Htar appeared to succeed. Removing placeholder file.\n"
+                    . $htarMessage
+                    . "\n";
+                DRA::logger($message, $mdssTransferLog);
+                DRA::clearLog($mdssErrorLog);
+            }
+        }
+        else {
+            my $message
+                = "Directory $name is empty indicating that it was "
+                . "probably transferred at an earlier time. HTAR will "
+                . "not archive its contents";
+            DRA::logger($message, $mdssTransferLog);
+        }
+
+    }
+    else {
+        my $message
+            = "The directory $name is supposed to be here "
+            . "to be sent over to MDSS via htar, but "
+            . "the directory is not here!";
+            push @errors, $message;
+    }
+
+}
+
+
+# One last check...
+if (@errors) {
+    DRA::logger("Failed! Check MDSS error log", $logFile);
+    my $line = join " \n", @errors;
+    DRA::logger($line, $mdssErrorLog);
+    croak "MDSS script failed:\n $line \n";
+}
+else {
+
+    DRA::logger("Everthing checked out, deleting md5 files...", $logFile);
+    my @acesMd5s = DRA::readDirectory($accessDir, "md5");
+    foreach my $access (@acesMd5s) {
+        my $path = Path::Class::File->new($accessDir, $access);
+        system($remove, $path) == 0
+            or croak "Failed to remove $access";
+    }
+    my @presMd5s = DRA::readDirectory($projectDir, "md5");
+    foreach my $pres (@presMd5s) {
+        my $path = Path::Class::File->new($projectDir, $pres);
+        system($remove, $path) == 0
+            or croak "Failed to remove $pres";
+    }
+
+}
+
+# Close up shop
+DRA::logger("MDSS transfer script complete!", $logFile);
+exit 0;
+
+# end main
+
+
+
+
+# ----------------------------------------------------------------------------
+#
+# Subroutines
+#
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+# Name:    sendFiles
+# Desc:    Since this process for sending files from the access and preservation
+#          folders is pretty much the same, I created a subroutine to do it.
+# Inputs:  local source directory, remote directory, filename
+# Outputs: Errors, if any
+# ----------------------------------------------------------------------------
+sub sendFiles {
+
+    my ($srcDir, $remoteSrcDir, $file) = @_;
+    my @errors;
+    
+    my $src = Path::Class::File->new($srcDir, $file);
+    # Create MD5 sum
+    DRA::logger("Creating MD5 sum for $file ...", $mdssTransferLog);
+    my ($md5file, $error) = DRA::createMD5($src, $file);
+    if ($error) {
+        DRA::logger("Failed!", $mdssTransferLog);
+        my $message = "MD5 creation failed: $error";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("done.", $mdssTransferLog);
+    }
+
+    # Send MD5 sum to MDSS
+    my $md5src  = $file . ".md5";
+    my $md5path = Path::Class::File->new($srcDir, $md5src);
+    my $md5dest = Path::Class::File->new($remoteSrcDir, $md5src);
+    DRA::logger("Sending MD5 file $md5src ...", $mdssTransferLog);
+    my $put_err1 = DRA::hsiPut(
+        {
+        source => $md5path,
+        dest   => $md5dest,
+        hsi    => $hsi,
+        opts   => $hsiOptLine,
+        ports  => $hsiPorts,
+        keytab => $keytabFile,
+        }
+    );
+    if ($put_err1) {
+        DRA::logger("Failed!", $mdssTransferLog);
+        my $message = "Failed to send file: $!";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("done.", $mdssTransferLog);
+    }
+        
+    # Send file to MDSS
+    my $dest = Path::Class::File->new($remoteSrcDir, $file);
+    DRA::logger("Sending $file ...", $mdssTransferLog);
+    my $put_err2 = DRA::hsiPut(
+        {
+        source => $src,
+        dest   => $dest,
+        hsi    => $hsi,
+        opts   => $hsiOptLine,
+        ports  => $hsiPorts,
+        keytab => $keytabFile,
+        }
+    );
+    if ($put_err2) {
+        DRA::logger("Failed!", $mdssTransferLog);
+        my $message = "Failed to send file: $!";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("done.", $mdssTransferLog);
+    }
+        
+    # Check transfer
+    DRA::logger("Verifying ...", $mdssTransferLog);
+    my $check_err = DRA::hsiCheck(
+        {
+        file   => $file,
+        path   => $remoteSrcDir,
+        hsi    => $hsi,
+        opts   => $hsiOptLine,
+        ports  => $hsiPorts,
+        temp   => $tempDir,
+        keytab => $keytabFile,
+        }
+    );
+    if ($check_err) {
+        DRA::logger("Failed!", $mdssTransferLog);
+        my $message = "Verification failed: $!";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("Passed!", $mdssTransferLog);
+    }
+
+    # Return any errors
+    if (@errors) {
+        my $line = join "\n", @errors;
+        return $line;
+    }
+    else {
+        return 0;
+    }
+
+}
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+        &main::help;
+    }
+    
+    exit 1;
+}
+
+sub help {
+    print "Usage: dra-mdss [-help] [-f] [dra.conf options] [project_directory] \n";
+}
+
+__END__
+
+=head1 DRA-MDSS
+
+dra-mdss - Transfers projects to IU's mass data storage facility
+
+=head1 VERSION
+
+This documentation refers to dra-mdss version 2.0.
+
+=head1 USAGE
+
+B<dra-mdss [-help] [-f] [dra.conf options] [project_directory]>
+
+=head1 REQUIRED ARGUMENTS
+
+A B<project directory> is required for the script to run. This must be the full
+path the directory.  For example:
+
+B<dra-mdss /Volumes/audio/Concerts/2010_fall/20100923vab1234>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+
+B<-f> Force flag.  The project will be transferred to mdss regardless of any errors 
+or if the concert was successfully sent at an earlier time.
+ 
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+
+-[variable name] [value]
+
+Example:
+
+B<dra-mdss -email joebob@indiana.edu [directory]>
+
+Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu
+
+=head1 DESCRIPTION
+
+dra-mdss will take a project folder that had been successfully processed by the dra-transfer
+script and send it to the mdss storage facility for archiving. During this processes, files
+will be renamed and checksums will be computed and stored along with the original files to
+ensure accurate transfers in the future.
+
+The script will continue to process a project directory until there is a successful
+outcome.  Once the project has been successfully sent to mdss, any further executions
+on that particular project directory will have no effect. Using the force option,
+(-f) will override this and re-send the project to mdss.
+
+=head1 DIAGNOSTICS
+
+Upon successful execution, the dra-mdss with exit with no output. Any fatal
+error will be written to standard output and the application will exit immediately.
+Messages are written to the application's own log file found in the application
+log directory, as well as a separate log file found in the project's log
+directory in the access folder.
+
+In the case of errors written to standard out, the error will appear on the
+command line shell or will be collected by the calling script, usually
+dra-run. The presence of any fatal error will cause the script to write an
+error log to the project log directory found in the access folder of the
+project. The presence of this file will mean dra-mdss will run again when
+called either directly or by dra-run.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+A properly configured dra.conf file should be sufficient for dra-mdss
+script to run.
+
+The DRA_HOME environment variable is required and can be set on a per-user basis
+or at execution time.
+
+=head1 DEPENDENCIES
+
+HTAR and HSI are required to send the files to MDSS.  These applications are
+available through IU's mass datastore service.  See http://kb.iu.edu/data/auvo.html
+for the latest client builds available.
+
+You will also need to create kerberos keytab files to enable automate access to the mdss account.
+For more information on creating keytab files, see http://kb.iu.edu/data/avdb.html.
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
+
+Travis Gregg  
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2010, the Trustees of Indiana University.
+
+=cut
+

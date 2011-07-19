@@ -1,0 +1,7 @@
+1. empty video dir on audio workstation indicates that there is video
+
+ mounts video computer
+
+ in videoComputer:/projectdir/access/*.img get copied to server access folder
+
+ everything else is left, until sent to MDSS.

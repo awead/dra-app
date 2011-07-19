@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>edu.indiana.music.AHBackup</string>
+	<key>LowPriorityIO</key>
+    <true/>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>DRA_HOME</key>
+        <string>/Users/awead/Projects/Audio</string>
+    </dict>
+	<key>ProgramArguments</key>
+	<array>
+        <string>/Users/awead/Projects/Audio/bin/dra-notify</string>
+        <string>-name</string>
+        <string>Auer Hall</string>
+        <string>scripts/auerHall.sh</string>
+	</array>
+	<key>ServiceDescription</key>
+	<string>Backs up files from the Auer Hall recording station</string>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>1</integer>
+		<key>Minute</key>
+		<integer>5</integer>
+	</dict>
+</dict>
+</plist>

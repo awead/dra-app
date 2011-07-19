@@ -1,0 +1,298 @@
+#!/usr/bin/perl -w
+# -------------------------------------------------------------------------
+# Name: dra-notify
+# Desc: Wrapper script that calls another dra script
+#
+# Adam Wead
+# Jacobs School of Music 
+# Indiana University
+# -------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+
+
+# -------------------------------------------------------------------------
+#
+# Setup variables
+#
+# -------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+
+# Define our config file variables
+$config->define( "accessFileList=s"             );
+$config->define( "afconvert=s"                  );
+$config->define( "afpMount=s"                   );
+$config->define( "audioDir=s"                   );
+$config->define( "backupBlock=s"                );
+$config->define( "backupDir=s"                  );
+$config->define( "backupScriptLog=s"            );
+$config->define( "bitRate=s"                    );
+$config->define( "burnFolder=s"                 );
+$config->define( "burnList=s"                   );
+$config->define( "chmod=s"                      );
+$config->define( "chmodArgs=s"                  );
+$config->define( "chmodMode=s"                  );
+$config->define( "conversionErrorLog=s"         );
+$config->define( "conversionLog=s"              );
+$config->define( "copiedLog=s"                  );
+$config->define( "copy=s"                       );
+$config->define( "delBlock=s"                   );
+$config->define( "deleteScriptLog=s"            );
+$config->define( "email=s"                      );
+$config->define( "errorLog=s"                   );
+$config->define( "group=s"                      );
+$config->define( "hallList=s"                   );
+$config->define( "hsi=s"                        );
+$config->define( "hsiOpts=s"                    );
+$config->define( "hsiPorts=s"                   );
+$config->define( "htar=s"                       );
+$config->define( "htarOpts=s"                   );
+$config->define( "htarUser=s"                   );
+$config->define( "interestedAccessVideoExts=s"  );
+$config->define( "interestedPreservVideoExts=s" );
+$config->define( "iucat=s"                      );
+$config->define( "jira=s"                       );
+$config->define( "kdestroy=s"                   );
+$config->define( "keytab=s"                     );
+$config->define( "kinit=s"                      );
+$config->define( "kinitOpts=s"                  );
+$config->define( "libraryDirectory=s"           );
+$config->define( "libraryServer=s"              );
+$config->define( "libraryTemp=s"                );
+$config->define( "logDir=s"                     );
+$config->define( "mdssBlock=s"                  );
+$config->define( "mdssErrorLog=s"               );
+$config->define( "mdssExclude=s"                );
+$config->define( "mdssList=s"                   );
+$config->define( "mdssLog=s"                    );
+$config->define( "mdssScriptLog=s"              );
+$config->define( "mkdir=s"                      );
+$config->define( "mkdirArgs=s"                  );
+$config->define( "mount=s"                      );
+$config->define( "mountCommand=s"               );
+$config->define( "mountPoint=s"                 );
+$config->define( "mv=s"                         );
+$config->define( "normArgs=s"                   );
+$config->define( "normalize=s"                  );
+$config->define( "remove=s"                     );
+$config->define( "rsync=s"                      );
+$config->define( "rsyncArgs=s"                  );
+$config->define( "rsyncLog=s"                   );
+$config->define( "rsyncTranArgs=s"              );
+$config->define( "runLog=s"                     );
+$config->define( "sampleRate=s"                 );
+$config->define( "semester=s"                   );
+$config->define( "sender=s"                     );
+$config->define( "sentToBeBurnedLog=s"          );
+$config->define( "share=s"                      );
+$config->define( "smbPass=s"                    );
+$config->define( "smbUser=s"                    );
+$config->define( "specificExtsList=s"           );
+$config->define( "ssh=s"                        );
+$config->define( "sshKey=s"                     );
+$config->define( "sshOpts=s"                    );
+$config->define( "sshUser=s"                    );
+$config->define( "tempDir=s"                    );
+$config->define( "touch=s"                      );
+$config->define( "transBlock=s"                 );
+$config->define( "transScriptLog=s"             );
+$config->define( "umount=s"                     );
+$config->define( "umountArgs=s"                 );
+$config->define( "videoMAC=s"                   );
+$config->define( "videoMACMountPoint=s"         );
+$config->define( "videoMACVolume=s"             );
+$config->define( "videoPass=s"                  );
+$config->define( "videoUser=s"                  );
+
+# Define command line option
+$config->define("help!");
+$config->define("name=s");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "dra.conf" );
+if ( !-e $confFile ) {
+    die "dra.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+# Set the rest of the variables from the config files
+my $email  = $config->get( "email"  );
+my $sender = $config->get( "sender" );
+my $name   = $config->get( "name"   );
+
+# Pull-in script name from argument list and check
+my $script     = $ARGV[0];
+
+if ( !$script ) {
+    main::error("Please specify a script");
+}
+
+
+# -------------------------------------------------------------------------
+#
+# Run the script
+#
+# -------------------------------------------------------------------------
+
+my $scriptPath = Path::Class::Dir->new($ENV{DRA_HOME}, $script);
+if (! -e $scriptPath) {
+    croak "No script found at $scriptPath";
+}
+
+# Run command and evaluate results
+my ($stdout, $stderr, $success, $exit_code) =
+   IO::CaptureOutput::capture_exec($scriptPath);
+
+if (!$name) {
+    $name = "Unspecified";
+}
+ 
+my $message;
+my $subject;
+if ($success) {
+    if ($stdout) {
+	    $subject = $name. ": Some errors";
+        $message 
+            = $script 
+            . " exited successfully but output was detected"
+            . " indicating there may have been errors.  Output was: \n"
+            . $stdout;
+    }
+    else {
+	    $subject = $name. ": OK";
+	    $message = "Successfully executed $script";
+    }
+} elsif ($stderr) {
+	$message 
+        = "$script did not run properly. "
+        . "Error code was $exit_code :\n $stderr";
+	$subject = $name . ": Failed";
+} else {
+	$message = "$script resulted in an unknown status";
+	$subject = $name . ": Unknown";
+}
+
+# Send email and exit
+DRA::sendEmail(
+    {
+    to      => $email, 
+    from    => $sender, 
+    subject => $subject, 
+    body    => $message,
+    }
+);
+
+exit 0;
+
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+    }
+                                                     
+    &main::help;
+    exit 0;
+}
+
+sub help {
+    print "Usage: dra-notify [-help] [script]\n";
+}
+
+__END__
+
+=head1 DRA-NOTIFY
+
+dra-notify - Executes a script and sends out an email notification of the results
+
+=head1 VERSION
+
+This documentation refers to dra-notify version 2.0.
+
+=head1 USAGE
+
+B<Usage: dra-notify [-help] [script]>
+
+=head1 REQUIRED ARGUMENTS
+
+A B<script> or executable file is required for dra-notify to run. Use the
+path relative to DRA_HOME
+
+Examples:
+
+To execute dra-run and have dra-notify send you the results:
+
+B<dra-notify bin/dra-run>
+
+To run the Auer Hall script:
+
+B<dra-notify -name "Auer Hall" scripts/auerHall.sh>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+
+B<-name> Allows you to specify a name for the script in the subject line of
+the email.  Otherwise, the path to the script will be used.
+
+B<-email> Overrides the email setting in dra.conf.
+
+B<-sender> Overrides the sender setting in dra.conf.
+
+=head1 DESCRIPTION
+
+dra-notify is a simple wrapper command that executes any script and 
+emails the results.
+
+=head1 DIAGNOSTICS
+
+dra-notify only reports the success or failure of the script it is calling.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+A properly configured dra.conf and the DRA_HOME environment variable are required.
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2010, the Trustees of Indiana University.
+
+=cut
+

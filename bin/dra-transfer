@@ -1,0 +1,890 @@
+#!/usr/bin/perl -w
+# ----------------------------------------------------------------------------
+# Name:  dra-transfer
+# Desc:  Transfers a single concert recording to Variations
+#
+# Adam Wead
+# Jacobs School of Music
+# Indiana University
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+#
+# Setup libraries and packages
+#
+# ----------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+
+# ----------------------------------------------------------------------------
+#
+# Define script-wide variables
+#
+# ----------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+# Define all variables from our dra.conf file
+$config->define( "accessFileList=s"             );
+$config->define( "afconvert=s"                  );
+$config->define( "afpMount=s"                   );
+$config->define( "audioDir=s"                   );
+$config->define( "backupBlock=s"                );
+$config->define( "backupDir=s"                  );
+$config->define( "backupScriptLog=s"            );
+$config->define( "bitRate=s"                    );
+$config->define( "burnFolder=s"                 );
+$config->define( "burnList=s"                   );
+$config->define( "chmod=s"                      );
+$config->define( "chmodArgs=s"                  );
+$config->define( "chmodMode=s"                  );
+$config->define( "conversionErrorLog=s"         );
+$config->define( "conversionLog=s"              );
+$config->define( "copiedLog=s"                  );
+$config->define( "copy=s"                       );
+$config->define( "delBlock=s"                   );
+$config->define( "deleteScriptLog=s"            );
+$config->define( "email=s"                      );
+$config->define( "errorLog=s"                   );
+$config->define( "group=s"                      );
+$config->define( "hallList=s"                   );
+$config->define( "hsi=s"                        );
+$config->define( "hsiOpts=s"                    );
+$config->define( "hsiPorts=s"                   );
+$config->define( "htar=s"                       );
+$config->define( "htarOpts=s"                   );
+$config->define( "htarUser=s"                   );
+$config->define( "interestedAccessVideoExts=s"  );
+$config->define( "interestedPreservVideoExts=s" );
+$config->define( "iucat=s"                      );
+$config->define( "jira=s"                       );
+$config->define( "kdestroy=s"                   );
+$config->define( "keytab=s"                     );
+$config->define( "kinit=s"                      );
+$config->define( "kinitOpts=s"                  );
+$config->define( "libraryDirectory=s"           );
+$config->define( "libraryServer=s"              );
+$config->define( "libraryTemp=s"                );
+$config->define( "logDir=s"                     );
+$config->define( "mdssBlock=s"                  );
+$config->define( "mdssErrorLog=s"               );
+$config->define( "mdssExclude=s"                );
+$config->define( "mdssList=s"                   );
+$config->define( "mdssLog=s"                    );
+$config->define( "mdssScriptLog=s"              );
+$config->define( "mkdir=s"                      );
+$config->define( "mkdirArgs=s"                  );
+$config->define( "mount=s"                      );
+$config->define( "mountCommand=s"               );
+$config->define( "mountPoint=s"                 );
+$config->define( "mv=s"                         );
+$config->define( "normArgs=s"                   );
+$config->define( "normalize=s"                  );
+$config->define( "remove=s"                     );
+$config->define( "rsync=s"                      );
+$config->define( "rsyncArgs=s"                  );
+$config->define( "rsyncLog=s"                   );
+$config->define( "rsyncTranArgs=s"              );
+$config->define( "runLog=s"                     );
+$config->define( "sampleRate=s"                 );
+$config->define( "semester=s"                   );
+$config->define( "sender=s"                     );
+$config->define( "sentToBeBurnedLog=s"          );
+$config->define( "share=s"                      );
+$config->define( "smbPass=s"                    );
+$config->define( "smbUser=s"                    );
+$config->define( "specificExtsList=s"           );
+$config->define( "ssh=s"                        );
+$config->define( "sshKey=s"                     );
+$config->define( "sshOpts=s"                    );
+$config->define( "sshUser=s"                    );
+$config->define( "tempDir=s"                    );
+$config->define( "touch=s"                      );
+$config->define( "transBlock=s"                 );
+$config->define( "transScriptLog=s"             );
+$config->define( "umount=s"                     );
+$config->define( "umountArgs=s"                 );
+$config->define( "videoMAC=s"                   );
+$config->define( "videoMACMountPoint=s"         );
+$config->define( "videoMACVolume=s"             );
+$config->define( "videoPass=s"                  );
+$config->define( "videoUser=s"                  );
+
+
+# Command line switches
+$config->define("f!");
+$config->define("r!");
+$config->define("help!");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "dra.conf" );
+if ( !-e $confFile ) {
+    die "dra.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+
+# Initialize the variables we'll be using from our config file
+my $scriptLog          = $config->get("logDir");
+my $log                = $config->get("transScriptLog");
+my $copiedLog          = $config->get("copiedLog");
+my $errorLog           = $config->get("errorLog");
+my $conversionLog      = $config->get("conversionLog");
+my $conversionErrorLog = $config->get("conversionErrorLog");
+my $sentToBeBurnedLog  = $config->get("sentToBeBurnedLog");
+my $touch              = $config->get("touch");
+my $accessFileList     = $config->get("accessFileList");
+my $copy               = $config->get("copy");
+my $remove             = $config->get("remove");
+my $to                 = $config->get("email");
+my $from               = $config->get("sender");
+my $hallList           = $config->get("hallList");
+my $ssh                = $config->get("ssh");
+my $libraryDirectory   = $config->get("libraryDirectory");
+my $tempDirectory      = $config->get("libraryTemp");
+my $libraryServer      = $config->get("libraryServer");
+my $user               = $config->get("sshUser");
+my $specificExtsList   = $config->get("specificExtsList");
+my $sshKeyFile         = $config->get("sshKey");
+my $sshOpts            = $config->get("sshOpts");
+my $blockList          = $config->get("transBlock");
+my $burnFolder         = $config->get("burnFolder");
+my $burnList           = $config->get("burnList");
+my $mdssList           = $config->get("mdssList");
+my $mdssExclude        = $config->get("mdssExclude");
+my $mv                 = $config->get("mv");
+my $mkdir              = $config->get("mkdir");
+my $rsyncLog           = $config->get("rsyncLog");
+
+# Initialize command line switches
+my $force      = $config->get("f");
+my $retransfer = $config->get("r");
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+# Check input
+if ( !$ARGV[0] ) {
+    main::error("No folder specified.");
+}
+my $projectDir = Path::Class::Dir->new( $ARGV[0] );
+if ( !-d $projectDir ) {
+    main::error(
+        "Specified folder does not exist. Are you using the full path?"
+    )
+}
+
+# Check our block list
+my $run = DRA::checkBlocks($blockList);
+if ($run) {
+    main::error($run);
+}
+
+# ----------------------------------------------------------------------------
+#
+# Do some stuff
+#
+# ----------------------------------------------------------------------------
+
+# Build paths to the necessary directories
+my $accessDir = Path::Class::Dir->new( $projectDir, "access" );
+my $logDir    = Path::Class::Dir->new( $accessDir,  "logs" );
+
+# Temporary directory on variations server
+my $tempDir  = Path::Class::Dir->new($tempDirectory);
+my $stageDir = Path::Class::Dir->new($libraryDirectory);
+
+# Build paths to necessary files
+my $logFile           = Path::Class::File->new( $scriptLog, $log );
+my $copiedLogPath     = Path::Class::File->new( $logDir,    $copiedLog );
+my $errorLogPath      = Path::Class::File->new( $logDir,    $errorLog );
+my $rsyncLogPath      = Path::Class::File->new( $logDir,    $rsyncLog );
+my $conversionLogPath = Path::Class::File->new( $logDir,    $conversionLog );
+my $conversionErrorLogPath =
+  Path::Class::File->new( $logDir, $conversionErrorLog );
+my $sentToBeBurnedLogPath =
+  Path::Class::File->new( $logDir, $sentToBeBurnedLog );
+my $sshKey = Path::Class::File->new( $ENV{DRA_HOME}, "conf", $sshKeyFile );
+
+# Sanity checks:  make sure we have an access directory
+if ( !-d $accessDir ) {
+    main::error("No access directory found, aborting!");
+}
+
+# If there is no rsync log, the concert was not succesfully transferred
+if ( !-e $rsyncLogPath ) {
+    my $message
+        = "No rsync log found.  This concert was not successfully copied "
+        . "from the remote station";
+    main::error($message);
+}
+
+# Start logging
+DRA::logger( "Transfer script starting up, processing $projectDir", $logFile );
+
+# Exit if this concert has aready been transfered
+if (    ( -e $copiedLogPath )
+    and ( !-e $errorLogPath )
+    and ( !$retransfer )
+    and ( !$force ) )
+{
+    DRA::logger( "Concert was successfully trasferred at an earlier time",
+        $logFile );
+    exit 0;
+}
+
+# Our error array that will track any errors
+my @errors;
+
+# Reset our error log, if it exists...
+if ( -e $errorLogPath ) {
+    DRA::clearLog($errorLogPath);
+}
+
+# Report on force option
+if ($force) {
+    my $message =
+        "The force flag is enabled. Any errors found will be reported "
+      . "but the script will not terminate";
+    DRA::logger( $message, $logFile );
+}
+
+# Evaluate project directory:
+# Before any files are transferred, the project folder is checked for
+# naming consistency and to ensure that all the required files are present.
+# If anything is missing or incorrect, the script will terminate with an
+# error message to the either the calling script or STDERR, if you're
+# running this from the command line.
+
+DRA::logger( "Removing resource forks from project, if any", $logFile );
+my @removeForksArgs = (
+    $projectDir,
+    "-name",
+    "._*",
+    );
+my $forkList = DRA::runCommand( "find", @removeForksArgs );
+my @forks = split "\n", $forkList;
+foreach my $fork (@forks) {
+    my $file = Path::Class::File->new($fork);
+    if (-e $file) {
+        system($remove, $file) == 0
+            or croak "Failed to remove $file : $!";
+    }
+}
+
+DRA::logger( "Checking project directory and contents...", $logFile );
+my ( $datedDir, $hallEmail, $varID, $mdssPrefix, $errMsg ) =
+  DRA::checkProjectDir( $projectDir, $hallList );
+if ($errMsg) {
+    push @errors, $errMsg;
+}
+
+# Rename any pdfs
+DRA::logger( "Checking pdfs...", $logFile );
+my $pdferr = DRA::renamePdfs( $projectDir, $mv );
+if ($pdferr) {
+    push @errors, $pdferr;
+}
+
+# Check project directory contents
+my $pderr = DRA::checkDirectoryContents(
+    {
+        dir   => $projectDir,
+        base  => "preservation",
+        list  => $accessFileList,
+        varid => $varID,
+    }
+);
+
+# Check project subdirectories
+my $sderr = DRA::checkSubdirectories($projectDir, $varID);
+
+if ($pderr) {
+    push @errors, $pderr;
+}
+if ($sderr) {
+    push @errors, $sderr;
+}
+
+# Evaluate
+if (@errors) {
+    my $line = join "\n", @errors;
+    if ($force) {
+        DRA::logger( "Errors found - ignoring", $logFile );
+        DRA::logger( "Errors were: $line",      $logFile );
+    }
+    else {
+        DRA::logger( "Errors found - writing to error log", $logFile );
+        DRA::logger( $line,                                 $errorLogPath );
+        croak(
+            qq{Errors were found with the project directory\n},
+            qq{Script will terminate now\n},
+        );
+    }
+}
+else {
+    DRA::logger( "directory looks good.", $logFile );
+}
+
+# Convert audio:
+# Once the project directory checks out, the audio can be converted from
+# preservation format to access format.  The following section calls
+# another script that converts the audio, logging the information under the
+# access/logs folder of the project directory and exits with a zero status
+# if everything is successful.  If the conversion fails, this script will
+# terminate with the error message thrown by the conversion script.  This
+# message in turn can be collected by the caller script.  The conversion
+# log is not removed upon failure, so it will need to be manually removed
+# so that the conversion process can be re-done.  This could be changed in
+# the future to make the process more automated.
+# 
+# Note to self: what happens if you don't remove it? Will some error be
+# thrown?
+
+DRA::logger( "Checking for conversion...", $logFile );
+if ( ( !-e $conversionLogPath ) or ( -e $conversionErrorLogPath ) ) {
+
+    DRA::logger( "Proceeding with conversion", $logFile );
+
+    if ( -e $conversionErrorLogPath ) {
+        DRA::logger( "Reprocessing failed conversion", $logFile );
+        DRA::clearLog($conversionErrorLogPath);
+    }
+
+    # Run conversion command
+    my $command =
+      Path::Class::File->new( $ENV{DRA_HOME}, "bin", "dra-convert" );
+    my ( $stdout, $stderr, $success, $exit_code ) =
+      IO::CaptureOutput::capture_exec( $command, $projectDir );
+
+    # Evaluate results
+    if ($success) {
+        DRA::logger( "$projectDir was converted successfully: $stdout",
+            $logFile );
+    }
+    else {
+        DRA::logger( "$projectDir conversion failed!", $logFile );
+        my $message = "Conversion failed.  Error was:\n $stderr";
+        DRA::logger( $message, $conversionErrorLogPath );
+        croak "Conversion script failed.  See conversion error log";
+    }
+
+    # Grab certain files from project directory and copy them to access folder
+    DRA::logger( "Copying file types to access directory", $logFile );
+    my @types = split / /, $accessFileList;
+    foreach my $ext (@types) {
+        my @files = DRA::readDirectory( $projectDir, $ext );
+        foreach my $file (@files) {
+            my $src = Path::Class::File->new( $projectDir, $file );
+            DRA::logger( "Copying $file to access directory",
+                $conversionLogPath );
+            system( $copy, $src, $accessDir ) == 0
+              or croak "Copy command failed. See conversion log \n";
+        }
+    }
+
+    DRA::logger( "Conversion complete!", $logFile );
+
+}
+else {
+    DRA::logger( "$projectDir has already been converted", $logFile );
+}
+
+# Evaluate access directory:
+# Similar to the earlier section, the access directory is checked in the
+# same way as the project directory.
+
+DRA::logger( "Checking access directory and contents...", $logFile );
+my $aderr = DRA::checkDirectoryContents(
+    {
+        dir   => $accessDir,
+        base  => "access",
+        list  => $accessFileList,
+        varid => $varID,
+    }
+);
+if ($aderr) {
+    push @errors, $aderr;
+}
+
+# Evaluate
+if (@errors) {
+    my $line = join "\n", @errors;
+    if ($force) {
+        DRA::logger( "Errors found - ignoring", $logFile );
+        DRA::logger( "Errors were: $line",      $logFile );
+    }
+    else {
+        DRA::logger( "Errors found - writing to error log", $logFile );
+        DRA::logger( $line,                                 $errorLogPath );
+        croak(
+            qq{Errors were found with the access directory\n},
+            qq{Script will terminate now\n},
+        );
+    }
+}
+else {
+    DRA::logger( "directory looks good.", $logFile );
+}
+
+# If this is a manunal retransfer, send out an email
+if ( -e $retransfer ) {
+    DRA::logger( "This is a manual retranser, sending email", $logFile );
+    DRA::sendEmail(
+        {
+            to      => $to,
+            from    => $from,
+            subject => $datedDir,
+            body    => "Manual retransfer performed on $datedDir",
+        }
+    ) or croak "Unable to use sendmail: $!\n";
+}
+else {
+    DRA::logger( "No email sent for retransfer", $logFile );
+}
+
+# Transfer files:
+# At this point, everything should check out and we're ready to run the
+# actual transfer.  Messages are logged to a log file under access/logs
+# that shows the step-by-step process.  Any errors thrown by the various
+# commands that executed on the remote server get collected in an array
+# that's evaluated at the end.  At that point, the script will proceed to
+# the next stage or croak and remove any files already tranferred to the
+# temporary directory on the remote server.  Errors will be logged to a
+# separate file, also in the access/logs directory, that is evaluated at
+# the very beginning of this script. The presence of this error log will
+# make the script run again for this same project directory until the files
+# are successfully transferred.
+
+# Make a note in the script log, then log to the project log
+DRA::logger( "Sending concert to library...", $logFile );
+DRA::logger( "Sending $accessDir to library", $copiedLogPath );
+
+# make temp directory on the remote machine
+DRA::logger( "Creating temp directory on remote server", $copiedLogPath );
+my $remoteCommand = "mkdir -p $tempDir";
+my @t_a = split / /, $sshOpts;
+push @t_a, "-l", $user, "-i", $sshKey, $libraryServer, $remoteCommand;
+system( $ssh, @t_a ) == 0
+  or croak "Remote command failed: $? \n";
+
+# Get a list of our desired file types based on the file extensions we
+# want to transfer and assemble a list of those files
+my @files;
+my @exts = split / /, $specificExtsList;
+foreach my $ext (@exts) {
+    my @f_a = DRA::readDirectory( $accessDir, $ext );
+    foreach my $f (@f_a) {
+        push @files, $f;
+    }
+}
+
+# Set permissions on the project directory
+DRA::logger(
+    "Setting permissions on the project directory (one more time)...", 
+    $logFile 
+);
+DRA::setPermissions($projectDir);
+
+# Proceed to transfer each file
+foreach my $file (@files) {
+
+    DRA::logger( "Processing $file...", $copiedLogPath );
+    my $libName = DRA::getLibraryName( $file, $varID );
+    DRA::logger( "Got library name $libName", $copiedLogPath );
+
+    my $source = Path::Class::File->new( $accessDir, $file );
+    my $dest   = Path::Class::File->new( $tempDir,   $libName );
+    DRA::logger( "Transferring $file to $dest", $copiedLogPath );
+
+    if ( $file =~ /\.wav$/ ) {    # for our wave files...
+
+        # Create md5 sum file
+        DRA::logger( "Creating MD5...", $copiedLogPath );
+        my ( $md5, $err ) = DRA::createMD5( $source, $libName );
+        if ($err) {
+            DRA::logger( "Failed, see error log", $copiedLogPath );
+            push @errors, $err;
+        }
+        else {
+
+            # Send md5 file to remote server
+            DRA::logger( "OK. MD5 name is $md5", $copiedLogPath );
+            my $mdsource = Path::Class::File->new( $accessDir, $md5 );
+            DRA::logger( "Sending md5 $mdsource to server", $copiedLogPath );
+            my $m_err = DRA::sendSCP(
+                {
+                    user   => $user,
+                    key    => $sshKey,
+                    opts   => $sshOpts,
+                    source => $mdsource,
+                    dest   => $tempDir,
+                    host   => $libraryServer,
+                }
+            );
+
+            # Evaluate
+            if ($m_err) {
+                DRA::logger( "Couldn't send md5 to server, see error log",
+                    $copiedLogPath );
+                push @errors, $m_err;
+            }
+
+            # Send wav file to remote server
+            DRA::logger( "Sending wave $source to server", $copiedLogPath );
+            my $t_err = DRA::sendSCP(
+                {
+                    user   => $user,
+                    key    => $sshKey,
+                    opts   => $sshOpts,
+                    source => $source,
+                    dest   => $dest,
+                    host   => $libraryServer,
+                }
+            );
+
+            # Evaluate
+            if ($t_err) {
+                DRA::logger( "Couldn't send wave to server,, see error log",
+                    $copiedLogPath );
+                push @errors, $t_err;
+            }
+
+            # Check the transfer
+            DRA::logger( "Checking md5 sum...", $copiedLogPath );
+            my $c_err = DRA::checkMD5(
+                {
+                    md5  => $md5,
+                    dir  => $tempDir,
+                    user => $user,
+                    key  => $sshKey,
+                    opts => $sshOpts,
+                    host => $libraryServer,
+                    ssh  => $ssh,
+                }
+            );
+
+            # Evaluate
+            if ($c_err) {
+                DRA::logger( "MD5 check failed, see error log",
+                    $copiedLogPath );
+                push @errors, $c_err;
+            }
+            else {
+                DRA::logger( "Passed.", $copiedLogPath );
+            }
+
+            # Remove local md5 sum file
+            # It will be recreated again in a different format when the
+            # concert is transferred to MDSS
+            my $r_err = system( $remove, $mdsource );
+            if ($r_err) {
+                my $message = "Failed to remove $mdsource from directory!";
+                DRA::logger( $message, $copiedLogPath );
+                push @errors, $message;
+            }
+            else {
+                DRA::logger( "MD5 file removed.", $copiedLogPath );
+            }
+
+        }
+
+    }
+    else {    # for all the other files...
+
+        DRA::logger( "Sending $source to server", $copiedLogPath );
+        my $err = DRA::sendSCP(
+            {
+                user   => $user,
+                key    => $sshKey,
+                opts   => $sshOpts,
+                source => $source,
+                dest   => $dest,
+                host   => $libraryServer,
+            }
+        );
+
+        if ($err) {
+            DRA::logger( "Errors found, see error log", $copiedLogPath );
+            push @errors, $err;
+        }
+
+    }
+
+}
+
+# Get a listing of our new MDSS files and write it out
+my $datafile = $varID . "_MDSSFileData.dat";
+my ($list) = DRA::getMDSSnames(
+    {
+        dir      => $projectDir,
+        list     => $mdssList,
+        prefix   => $mdssPrefix,
+        omits    => $mdssExclude,
+        datafile => $datafile,
+        logdir   => $logDir,
+    }
+);
+my $listName = $varID . "_MDSSFileNames.txt";
+my $listPath = Path::Class::File->new( $logDir, $listName );
+DRA::writer( $list, $listPath );
+
+# Send the formatted listing to the library server
+DRA::logger( "Sending $listName to server", $copiedLogPath );
+my $mdss_err = DRA::sendSCP(
+    {
+        user   => $user,
+        key    => $sshKey,
+        opts   => $sshOpts,
+        source => $listPath,
+        dest   => $tempDir,
+        host   => $libraryServer,
+    }
+);
+
+if ($mdss_err) {
+    DRA::logger( "Couldn't send the MDSS list, see error log", $copiedLogPath );
+    push @errors, $mdss_err;
+}
+
+# Evauluate any errors from previous section, croaking accordingly...
+if (@errors) {
+
+    my $line = join "\n", @errors;
+    if ($force) {
+
+        DRA::logger( "Errors found - ignoring", $copiedLogPath );
+        DRA::logger( "Errors were: $line",      $copiedLogPath );
+
+    }
+    else {
+
+        # remove temp directory on the remote machine
+        DRA::logger( "Removing temp directory files on remote server",
+            $copiedLogPath );
+        my $remoteCommand = "rm -rf $tempDir";
+        my @r_a = split / /, $sshOpts;
+        push @r_a, "-l", $user, "-i", $sshKey, $libraryServer, $remoteCommand;
+        system( $ssh, @r_a ) == 0
+          or croak "Remote command failed: $? \n";
+
+        # Report errors to error log and exit
+        DRA::logger( "Errors found - writing to error log", $logFile );
+        DRA::logger( $line,                                 $errorLogPath );
+        croak(
+            qq{Errors were reported during the transfer process\n},
+            qq{Script will terminate now\n},
+        );
+
+    }
+
+}
+
+# Finalize transfer:
+# If the script has not croaked at this point, all the files have been
+# successfully sent to the Variations server, including the MDSS file
+# listing.  The final steps are to copy the temp files from the remote
+# directory on the Variations server to the staging directory on that server
+# and to send the files in the burn list to the burn folder.
+
+# Send files to the burn folder
+my $burnFolderPath = Path::Class::Dir->new($burnFolder, $datedDir);
+if ( -e $burnFolderPath and (! $force) ) {
+    DRA::logger(
+        "Files have already been copied to the burn folder",
+        $logFile
+    );
+}
+else {
+
+    DRA::logger( "Copying access files to burn folder...", $logFile );
+    DRA::clearLog($sentToBeBurnedLogPath);
+
+    # If we're forcing, the directory may already be here
+    if (! -e $burnFolderPath) {
+        system($mkdir, $burnFolderPath) == 0
+            or croak "Failed to create burn folder";
+    }
+    my @burnFiles = split / /, $burnList;
+
+    foreach my $file (@burnFiles) {
+        DRA::logger(
+            "Copying $file files to burn folder",
+            $sentToBeBurnedLogPath
+        );
+        my @accessWaves = DRA::readDirectory( $accessDir, $file );
+        foreach my $wave (@accessWaves) {
+            my $src  = Path::Class::File->new( $accessDir, $wave );
+            DRA::logger( "Copying $wave to burn folder", $copiedLogPath );
+            system($copy, $src, $burnFolderPath) == 0
+                or croak "Failed to copy $wave to burn folder";
+        }
+    }
+    
+    DRA::logger( "done.", $logFile );
+
+}
+
+# Move Variations' files to staging directory
+DRA::logger( "Making directory $datedDir on remote server and moving contents",
+    $copiedLogPath );
+my $dir     = Path::Class::Dir->new( $stageDir, $datedDir );
+my $command = "mkdir -p $dir && mv $tempDir/* $dir && rm -rf $tempDir";
+my @args    = split / /, $sshOpts;
+push @args, "-l", $user, "-i", $sshKey, $libraryServer, $command;
+my $line = join " ", @args;
+system( $ssh, @args ) == 0
+  or croak "Failed to run $line : $? \n";
+
+# We're done
+DRA::logger( "complete!", $logFile );
+exit 0;
+
+
+# -------------------------------------------------------------------
+#
+# Subroutines
+#
+# -------------------------------------------------------------------
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+    }
+
+    &main::help;
+    exit 0;
+}
+
+sub help {
+    my $message
+        = "Usage: dra-transfer [-help] [-r -f] [dra.conf options] "
+        . "[project directory]\n";
+    print $message;
+}
+
+
+__END__
+
+=head1 DRA-TRANSFER
+
+dra-transfer - Checks, converts and transfers a single project to Variations
+
+=head1 VERSION
+
+This documentation refers to dra-transfer version 2.0.
+
+=head1 USAGE
+
+B<dra-transfer [-help] [-r -f] [dra.conf options] [project directory]>
+
+=head1 REQUIRED ARGUMENTS
+
+A B<project directory> is required for the script to run. This must be the full
+path the directory.  For example:
+
+B<dra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+
+B<-r> Retransfer switch. Transfers a project even if it has already been successfully sent before.
+
+B<-f> Force flag. Performs a force transfer where project directory checks are skipped and the 
+concert is sent as-is.
+ 
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+
+-[variable name] [value]
+
+Example:
+
+B<dra-run -email joebob@indiana.edu [directory]>
+
+Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu
+
+=head1 DESCRIPTION
+
+dra-transfer checks the consistency of a given project directory, such as filenames and
+contents. It then converts the audio files using dra-convert, and sends the files to
+Variations.
+
+In preparation for dra-mdss and reporting to Variations, dra-transfer will create
+a data file and text file with the new names of the files in the directory. 
+However, the filename will not change until dra-mdss runs using the data file
+created by dra-transfer. Successfully complete projects will also have some of the contents copied to the
+burn folder for CD creation.
+
+Once a project is successfully converted and transferred, any further action on it will
+have no effect unless the force (-f) or resend (-r) flags are used. Any errors are
+written to an error log in the project's log directory. The presence of this log will
+cause dra-transfer to attempt the transfer the project the next time it is called.
+
+=head1 DIAGNOSTICS
+
+Upon successful execution, the dra-transfer with exit with no output. Any fatal
+error will be written to standard output and the application will exit immediately.
+Messages are written to the application's own log file found in the application
+log directory, as well as a separate log file found in the project's log
+directory in the access folder.
+
+In the case of errors written to standard out, the error will appear on the
+command line shell or will be collected by the calling script, usually
+dra-run. The presence of any fatal error will cause the script to write an
+error log to the project log directory found in the access folder of the
+project. The presence of this file will mean dra-transfer will run again when
+called either directly or by dra-run.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+A properly configured dra.conf file should be sufficient for dra-transfer
+to work.
+
+The DRA_HOME environment variable is required and can be set on a per-user basis
+or at execution time.
+
+=head1 DEPENDENCIES
+
+The dra-convert script is required.
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com 
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2010, the Trustees of Indiana University.
+
+=cut
+

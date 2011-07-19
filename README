@@ -1,0 +1,110 @@
+DRA APPLICATION README
+
+Welcome to the Department of Recording Arts perl application readme.  If you're
+reading this you may be trying to install this application for the first time.
+If so, read on...
+
+REQUIREMENTS
+
+This application was written using Perl for the XServe platform and is
+compatible with Leopard and Snow Leopard operating systems.
+
+INSTALLATION
+
+Unpack this folder and its contents anywhere on the system. Suitable locations
+include:
+
+/usr/local/dra
+/Users/audiouser/Applications/dra
+
+The application is completely self-contained.
+
+ENVIRONMENTAL VARIABLES
+
+The dra application requires a couple of environment variables.  Please ensure
+that these are set for whichever user will be running the commands. This can be
+done several ways, but the easiest is probably by adding the following to your
+.bashrc file:
+
+# DRA_HOME=[full path to this folder]
+# export DRA_HOME
+#
+# PATH=$PATH:$DRA_HOME/bin
+# export PATH
+#
+# MANPATH=$MANPATH:$DRA_HOME/man
+# export MANPATH
+
+The rest of the documentation can be found under the doc folder or by typing:
+
+# man [any script in the bin directory] 
+
+from the command line.
+
+THIRD-PARTY SOFTWARE
+
+The dra application requires afconvert, which comes standard with OSX, and
+normalize which is available via GPL.
+
+ERROR REPORTING
+
+All of the dra scripts use a verbose amount of logging, both for the script
+log and the logs that are written within a particular project folder. If any
+script exits without any fatal errors or problems otherwise, there will be no
+output. If there is any problem, either with the script itself such as a bad
+parameter, or a problem with any of the operations to the project folders,
+there should be a copious amount of verbage outputted to STDOUT along with an
+exit code of something other than 0.
+
+If you run one of the commands and are expecting some output, check the logs.
+
+DIRECTORY STRUCTURE
+
+bin
+
+This folder contains the main scripts that perform all the actions required in
+the application.
+
+conf
+
+All of the configuration files, ssh keys and keytabs go here
+
+lib
+
+Required perl libraries are found here
+
+logs
+
+Default directory for application-level logs, although this can be anywhere by
+setting the appropriate location in the dra.conf file
+
+man
+
+Man pages for all the scripts are kept in here
+
+mount
+
+Default mount location for samba shares that are mounted from remote recording
+stations.
+
+plist
+
+Example plist files for use with launchd to automate specific aspects of the
+application. You'll need to edit these as needed for your particular location.
+
+scripts
+
+Shell scripts that are used to run different dra scripts with pre-configured
+settings. Usually used in conjunction with plist files to automate a specific
+procedure at a certain time each day.
+
+tools
+
+Various secondary scripts and helper applications.
+
+CHANGE LOG
+
+12 Sep 2010
+- dra-backup writes rsync.log after permissions are changed
+- transfer script fails if rsync log is not found--ie. the concert was
+  transferred successfully

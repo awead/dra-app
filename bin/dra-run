@@ -1,0 +1,441 @@
+#!/usr/bin/perl -w
+# ----------------------------------------------------------------------------
+# Name:  dra-run
+# Desc:  Executes a set of scripts associated with a single concert
+#
+# Adam Wead
+# Jacobs School of Music
+# Indiana University
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+#
+# Setup libraries and packages
+#
+# ----------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+
+# ----------------------------------------------------------------------------
+#
+# Define script-wide variables
+#
+# ----------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+
+# Define all variables from our dra.conf file
+$config->define( "accessFileList=s"             );
+$config->define( "afconvert=s"                  );
+$config->define( "afpMount=s"                   );
+$config->define( "audioDir=s"                   );
+$config->define( "backupBlock=s"                );
+$config->define( "backupDir=s"                  );
+$config->define( "backupScriptLog=s"            );
+$config->define( "bitRate=s"                    );
+$config->define( "burnFolder=s"                 );
+$config->define( "burnList=s"                   );
+$config->define( "chmod=s"                      );
+$config->define( "chmodArgs=s"                  );
+$config->define( "chmodMode=s"                  );
+$config->define( "conversionErrorLog=s"         );
+$config->define( "conversionLog=s"              );
+$config->define( "copiedLog=s"                  );
+$config->define( "copy=s"                       );
+$config->define( "delBlock=s"                   );
+$config->define( "deleteScriptLog=s"            );
+$config->define( "email=s"                      );
+$config->define( "errorLog=s"                   );
+$config->define( "group=s"                      );
+$config->define( "hallList=s"                   );
+$config->define( "hsi=s"                        );
+$config->define( "hsiOpts=s"                    );
+$config->define( "hsiPorts=s"                   );
+$config->define( "htar=s"                       );
+$config->define( "htarOpts=s"                   );
+$config->define( "htarUser=s"                   );
+$config->define( "interestedAccessVideoExts=s"  );
+$config->define( "interestedPreservVideoExts=s" );
+$config->define( "iucat=s"                      );
+$config->define( "jira=s"                       );
+$config->define( "kdestroy=s"                   );
+$config->define( "keytab=s"                     );
+$config->define( "kinit=s"                      );
+$config->define( "kinitOpts=s"                  );
+$config->define( "libraryDirectory=s"           );
+$config->define( "libraryServer=s"              );
+$config->define( "libraryTemp=s"                );
+$config->define( "logDir=s"                     );
+$config->define( "mdssBlock=s"                  );
+$config->define( "mdssErrorLog=s"               );
+$config->define( "mdssExclude=s"                );
+$config->define( "mdssList=s"                   );
+$config->define( "mdssLog=s"                    );
+$config->define( "mdssScriptLog=s"              );
+$config->define( "mkdir=s"                      );
+$config->define( "mkdirArgs=s"                  );
+$config->define( "mount=s"                      );
+$config->define( "mountCommand=s"               );
+$config->define( "mountPoint=s"                 );
+$config->define( "mv=s"                         );
+$config->define( "normArgs=s"                   );
+$config->define( "normalize=s"                  );
+$config->define( "remove=s"                     );
+$config->define( "rsync=s"                      );
+$config->define( "rsyncArgs=s"                  );
+$config->define( "rsyncLog=s"                   );
+$config->define( "rsyncTranArgs=s"              );
+$config->define( "runLog=s"                     );
+$config->define( "sampleRate=s"                 );
+$config->define( "semester=s"                   );
+$config->define( "sender=s"                     );
+$config->define( "sentToBeBurnedLog=s"          );
+$config->define( "share=s"                      );
+$config->define( "smbPass=s"                    );
+$config->define( "smbUser=s"                    );
+$config->define( "specificExtsList=s"           );
+$config->define( "ssh=s"                        );
+$config->define( "sshKey=s"                     );
+$config->define( "sshOpts=s"                    );
+$config->define( "sshUser=s"                    );
+$config->define( "tempDir=s"                    );
+$config->define( "touch=s"                      );
+$config->define( "transBlock=s"                 );
+$config->define( "transScriptLog=s"             );
+$config->define( "umount=s"                     );
+$config->define( "umountArgs=s"                 );
+$config->define( "videoMAC=s"                   );
+$config->define( "videoMACMountPoint=s"         );
+$config->define( "videoMACVolume=s"             );
+$config->define( "videoPass=s"                  );
+$config->define( "videoUser=s"                  );
+
+# Command line switches
+$config->define("help!");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "dra.conf" );
+if ( !-e $confFile ) {
+    die "dra.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+
+# Define the variables we'll use
+my $audioDir          = $config->get("audioDir");
+my $semester          = $config->get("semester");
+my $log               = $config->get("runLog");
+my $logDir            = $config->get("logDir");
+my $tempDir           = $config->get("tempDir");
+my $remove            = $config->get("remove");
+my $copy              = $config->get("copy");
+my $mkdir             = $config->get("mkdir");
+my $jira              = $config->get("jira");
+my $sender            = $config->get("sender");
+my $iucat             = $config->get("iucat");
+
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+
+# ----------------------------------------------------------------------------
+#
+# Do some stuff
+#
+# ----------------------------------------------------------------------------
+
+# Setup file paths
+my $bin      = Path::Class::Dir->new( $ENV{DRA_HOME}, "bin" );
+my $tools    = Path::Class::Dir->new( $ENV{DRA_HOME}, "tools" );
+my $srcDir   = Path::Class::Dir->new( $audioDir, $semester );
+my $logFile  = Path::Class::File->new( $logDir, $log );
+my $marcTemp = Path::Class::Dir->new( $tempDir, "marc" );
+
+DRA::logger("DRA run starting up, processing $srcDir", $logFile);
+
+# Create temp directory for marc records
+if (! -e $marcTemp) {
+    system ($mkdir, $marcTemp) == 0 or
+        croak "Failed to create marc temp directory: $!";
+}
+
+my %errors;
+my @projects = DRA::readDirectory( $srcDir );
+foreach my $dir ( @projects ) {
+
+    my $projectDir = Path::Class::Dir->new( $srcDir, $dir );
+    DRA::logger("Processing $dir", $logFile);
+
+    # Do the transfer
+    my $transferCommand = Path::Class::File->new( $bin, "dra-transfer" );
+    my ($t_out, $t_err, $t_success, $t_exit_code) =
+        IO::CaptureOutput::capture_exec($transferCommand, $projectDir);
+
+    if ( $t_err or $t_out ) {
+        DRA::logger("...transfer FAILED. Skipping to next folder", $logFile);
+        my $message 
+            = "dra-transfer output: " . $t_out . "\n\n" 
+            . "dra-transfer errors: " . $t_err . "\n\n"
+            ;
+        $errors{$dir} = $message;
+        next;
+    }
+    else {
+        DRA::logger("...transfer ok", $logFile);;
+    }
+    
+    # Check and see if marc record exists
+    my @list = DRA::readDirectory( $projectDir, "txt" );
+    if ( ( join " ", @list ) =~ /SD_marc/ ) {
+        DRA::logger("...Marc record already exists", $logFile);
+    }
+    else {
+
+        # Make the marc record
+        # Marc.pl script will barf out garbage even when it runs fine so we
+        # have to parse the exit code
+        # TODO: rewrite marc.pl so it doesn't !
+        DRA::logger("...Creating marc record", $logFile);
+        my $marcCommand = Path::Class::File->new( $tools, "marc.pl" );
+        my ( $stdout, $stderr, $success, $exit_code ) =
+            IO::CaptureOutput::capture_exec( $marcCommand, $projectDir );
+        
+        if  ( !$success ) {
+            my $message
+                = "...Marc record FAILED. "
+                . "IUCAT and Jira will not be updated. "
+                . "Skipping to next folder"
+                ;
+            DRA::logger($message, $logFile);
+            $errors{$dir} = $stderr;
+            next;
+        }
+        else {
+            DRA::logger("...Marc record ok", $logFile );
+            my $file = DRA::getMarc( $projectDir);
+            my @cpArgs = ( $file, $marcTemp );
+            DRA::logger("...copying marc file to temp directory", $logFile);
+            system ( $copy, @cpArgs ) == 0 or
+                croak "Failed to copy marc record to temp directory";
+            DRA::logger("...Creating JIRA ticket", $logFile);
+            my $subject = DRA::jiraSubject( $projectDir );
+            my $body    = DRA::jiraMessage( $projectDir );
+            DRA::sendEmail(
+                {
+                to      => $jira,
+                from    => $sender,
+                subject => $subject,
+                body    => $body,
+                }
+            );
+
+        }
+
+    }
+    
+    
+    # Send to MDSS
+    # Any output, whether from STDOUT or STDERR means something wrong happened
+    my $mdssCommand = Path::Class::File->new( $bin, "dra-mdss" );
+    my ($m_out, $m_err, $m_success, $m_exit_code) =
+        IO::CaptureOutput::capture_exec( $mdssCommand, $projectDir );
+    
+    if  ( $m_err or $m_out ) {
+        my $log_message
+            = "...MDSS script FAILED. "
+            . "Skipping to next folder"
+            ;
+        DRA::logger($log_message, $logFile);
+        my $message 
+            = "dra-mdss output: " . $m_out . "\n\n" 
+            . "dra-mdss errors: " . $m_err . "\n\n"
+            ;
+        $errors{$dir} = $message;
+        next;
+    }
+    else {
+        DRA::logger("...MDSS ok", $logFile);
+    }
+
+}
+
+# Mail out accumulated marc records, if any
+my @files = DRA::readDirectory( $marcTemp, "txt" );
+if (scalar(@files) >= 1) {
+    DRA::logger(
+        "Sending marc records to $iucat for loading into IUCAT",
+        $logFile
+    );
+    my $subject = "New JSOM MARC records";
+    my $body 
+        = "Attached are MARC records for new concerts just delivered "
+        . "to the JSOM library. If there are any problems, email "
+        . "audiopro\@indiana.edu and digitize\@indiana.edu\n";
+    
+    my $results = DRA::sendMarc(
+        {
+        to => $iucat,
+        from => $sender,
+        subject => $subject,
+        body => $body,
+        folder => $marcTemp,
+        }
+    );
+}
+else {
+    DRA::logger(
+        "No marc records created; email will not be sent",
+        $logFile
+    );
+}
+    
+
+# Remove temp dir
+my @rmArgs = ("-Rf", $marcTemp);
+system ($remove, @rmArgs) == 0 or
+    croak "Failed to remove temporary marc folder: $!";
+
+# Return any accumulated errors to STDOUT
+if (%errors) {
+
+    DRA::logger("DRA run complete, but with errors", $logFile);
+    print "dra-run finished with the following errors:\n\n";
+
+    foreach my $error ( keys %errors ) {
+        print $error . ":\n" . $errors{$error};
+    }
+}
+else {
+    DRA::logger("DRA run complete with no errors.", $logFile);
+}
+
+exit 0;
+
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+    }
+
+    &main::help;
+    exit 0;
+}
+
+sub help {
+    print "Usage: dra-run [-help] [dra.conf options]\n";
+}
+
+__END__
+
+=head1 DRA-RUN
+
+dra-run - Executes dra-transfer, marc.pl and dra-mdss for a semester's projects
+
+=head1 VERSION
+
+This documentation refers to dra-run version 2.0.
+
+=head1 USAGE
+
+B<dra-run [-help] [dra.conf options]>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+ 
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+
+-[variable name] [value]
+
+Example:
+
+B<dra-run -email joebob@indiana.edu [directory]>
+
+Will execute the script overriding the email address specified in dra.conf
+with joebob@indiana.edu
+
+=head1 DESCRIPTION
+
+dra-run executes a series of scripts and actions on each project directory
+found within a given folder. These include: dra-transfer, marc.pl, email
+notifications to Jira, and dra-mdss.  After every project directory is
+processed, the accumulated marc records for successful actions are emailed for
+loading into IUCAT.
+
+=head1 ERROR HANDLING
+
+dra-run will interpret any output, whether from STDOUT or STDERR, as an
+indication that something went wrong. If any of the dra scripts outputs
+something, it generally means that something did not go as it should have.
+Conversely, if there is no output from either STDOUT or STDERR, then the
+script was successful.
+
+dra-run also behaves in the same manner, so that if there is no output from
+any of the collective scripts that run, indicating that everything ran
+successfully, dra-run returns no output either.
+
+=head1 DIAGNOSTICS
+
+dra-run only collects and reports on the outcomes of other scripts. Errors
+regarding the outcomes of those scripts will be found in the respective
+project log folder.  There is an application log for dra-run to report
+progress and any non-fatal errors.
+
+dra-run would only fail for environmental reasons such as incorrect
+permissions or other problems interfering with the application. Otherwise, the
+dra-run reports explicitly on the success or failure of a given project.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+A properly configured dra.conf file should be sufficient for dra-run to work.
+
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.
+
+=head1 DEPENDENCIES
+
+The marc.pl script under the DRA_HOME/tools folder is required for marc record
+creation.
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com 
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2010, the Trustees of Indiana University.
+
+=cut
+

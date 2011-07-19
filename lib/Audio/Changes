@@ -1,0 +1,36 @@
+Revision history for Perl extension Audio::Wav.
+
+0.01  Fri Dec 11 05:54:22 1998
+  - original version; created by h2xs 1.18
+
+0.02  Sat Sep 01 15:15:00 2001
+  - works on big endian machines!
+  - no need for Audio::Tools anymore
+  - added support for info & sampler blocks.
+  - now honours padding bytes
+  - read & read_raw no longer return non-audio data.
+  - added error handler.
+  - slight speed improvement for read & write methods
+  - some other fixes.
+
+0.03  Fri Jun 11 13:29:00 2004
+  - minor bug fix to pass tests with Perl 5.8.3 (thanks to Jeremy Devenport).
+
+0.04  Thu Dec 30 07:47:00 2004
+  - fixed a bug in Audio::Wav::Read::move_to, now adds where the data actually starts to the position given.
+  - Audio::Wav::Read::move_to now rereads data length to see if file has grown since this was last read.
+  - added method Audio::Wav::Read::reread_length, rereads the length of the file in case it is being written to as we are reading it.
+  - added method Audio::Wav::Read::read_raw_samples which will read X samples in raw format.
+  - added method Audio::Wav::Read::position_samples which returns the current audio data position in samples.
+  - in method Audio::Wav::Write::add_cue, if sample position supplied is undefined, then the position will be the current position (end of all data written so far).
+  - in method Audio::Wav::Write, moved the option of not caching data from the write_raw method to new.
+
+0.05  Tue Oct 25 12:20:00 2005
+  - Audio::Wav::Read::position_samples should have divided by block_align, rather than multiplied (thanks David Brandt).
+  - Fixed bug where unknown blocks weren't skipped (thanks Robert Hiller).
+
+0.06  Wed Mar 22 12:00:00 2006
+  - Fixed a circular reference in Audio::Wav::Write::Header that was causing memory to leak (thanks Sumitro Chowdhury).
+  - Tidied up bits and pieces.
+  - Added very basic support for WAVEFORMATEXTENSIBLE.
+  - When writing files, finish() will now be called by DESTROY if necessary.
