@@ -1,0 +1,14 @@
+Problem:
+This one may be very difficult to track down, occasionally the last track of a
+file is changed from a track marker to a generic marker on the sample rate
+converted. 
+
+Status: Waiting
+
+
+Notes:
+
+7-19-2011
+Konrad: I will run another test next week: prepare identical projects  on
+Wavelab 6, and Wavelab 7 so we can pinpoint if the problem is related to the
+software. 

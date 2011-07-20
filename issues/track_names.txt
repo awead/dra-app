@@ -1,0 +1,7 @@
+Problem:
+
+When a concert is copied to the concert_archive folder the first track's name
+is changed from 'Ambience' to 'End'. The track name is correct in the version
+in the backup folder. I did a test – I manually ran the backup script on a
+test folder, the behavior was the same – correct track name in the backup
+folder, incorrect in the concert_archive folder

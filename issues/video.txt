@@ -1,0 +1,23 @@
+Feature:
+
+Video stations need to send their data up to mdss
+
+Deatils:
+
+There will be a project folder on the video computer ( we have 2 video
+computers now, one in the MAC and a second in Auer Hall) which will contain
+the following: 
+
+- a video subfolder containing the FCP project, including source video
+- One or more rendered .mov files
+- One or more DVD .img files
+
+These should be treated in the same way as the audio assets, the subfolder
+will be sent to MDSS via htar, and the .mov and .img files will be sent via
+hsi with associated checksums. One additional step, the .img files will need
+to be copied to the access directory of the associated project file on the
+server. In Travis's scripts it worked like this: on the corresponding audio
+computer a 'video' subfolder was created in the project directory to alert the
+script that video exists for the project. The script waited for access folders
+in both the audio and video project directories before the concert was
+processed.

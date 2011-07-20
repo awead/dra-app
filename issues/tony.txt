@@ -1,0 +1,7 @@
+Feature:
+
+You should work directly with Tony on this since his requirements are slightly
+different. I would like his projects to use their own backup folder so we
+don't confuse projects, and his assets do not need to be stored on the server,
+they can be deleted once they have made it to MDSS and Variations. I'll have
+Tony contact you directly.
