@@ -42,6 +42,8 @@ my $config = AppConfig->new( {
 $config->define( "accessFileList=s"             );
 $config->define( "afconvert=s"                  );
 $config->define( "afpMount=s"                   );
+$config->define( "appUser=s"                    );
+$config->define( "appGroup=s"                   );
 $config->define( "audioDir=s"                   );
 $config->define( "backupBlock=s"                );
 $config->define( "backupDir=s"                  );
@@ -171,6 +173,8 @@ my $mdssExclude        = $config->get("mdssExclude");
 my $mv                 = $config->get("mv");
 my $mkdir              = $config->get("mkdir");
 my $rsyncLog           = $config->get("rsyncLog");
+my $appUser            = $config->get("appUser");  
+my $appGroup           = $config->get("appGroup"); 
 
 # Initialize command line switches
 my $force      = $config->get("f");
@@ -503,7 +507,7 @@ DRA::logger(
     "Setting permissions on the project directory (one more time)...", 
     $logFile 
 );
-DRA::setPermissions($projectDir);
+DRA::setPermissions($projectDir,$appUser,$appGroup);
 
 # Proceed to transfer each file
 foreach my $file (@files) {

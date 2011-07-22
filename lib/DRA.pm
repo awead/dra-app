@@ -1637,7 +1637,9 @@ sub checkAge {
 sub setPermissions {
 
     use File::Find;
-    my $dir = shift;
+    my $dir   = shift;
+    my $user  = shift;
+    my $group = shift;
     find(\&wanted, $dir);
     
     sub wanted { 
@@ -1652,6 +1654,11 @@ sub setPermissions {
                 or croak "Failed to chmod file $File::Find::name : $!";
         }
     }
+
+    my $ownership = $user . ":" . $group;
+    my @args = ("-R", $ownership, $dir);
+    system("chown", @args) == 0
+        or croak "Failed to chown files : $!";
 
 }
 

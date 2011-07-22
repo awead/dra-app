@@ -11,7 +11,7 @@ use DRA;
 #    print "[$age] is not greater than 24\n";
 #}
 
-DRA::setPermissions($ARGV[0]);
+DRA::setPermissions($ARGV[0],"awead","staff");
 
 
 exit 0;

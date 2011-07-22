@@ -42,6 +42,8 @@ my $config = AppConfig->new( {
 $config->define( "accessFileList=s"             );
 $config->define( "afconvert=s"                  );
 $config->define( "afpMount=s"                   );
+$config->define( "appUser=s"                    );
+$config->define( "appGroup=s"                   );
 $config->define( "audioDir=s"                   );
 $config->define( "backupBlock=s"                );
 $config->define( "backupDir=s"                  );
@@ -171,6 +173,8 @@ my $blockList     = $config->get( "backupBlock"     );
 my $audioDir      = $config->get( "audioDir"        );
 my $semester      = $config->get( "semester"        );
 my $hallList      = $config->get( "hallList"        );
+my $appUser       = $config->get( "appUser"         );
+my $appGroup      = $config->get( "appGroup"        );
 
 my $videoMACVolume 
     = $config->get( "videoMACVolume" );
@@ -375,7 +379,7 @@ sub transferFiles {
         my $results = DRA::runCommand($rsync, @args);
 
         # Set permissions on the transferred directory
-        DRA::setPermissions($projectDir);
+        DRA::setPermissions($projectDir,$appUser,$appGroup);
         
         #if (-d $remoteVideoNoticeDir ) {
         #    $message = "Transferring video files...";
