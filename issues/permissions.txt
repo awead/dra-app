@@ -1,2 +1,0 @@
-Problem: once a concert has been processed the project folder's permissions
-are incorrect; it is now owned by the system, not audiopro. 
