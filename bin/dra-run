@@ -43,6 +43,8 @@ my $config = AppConfig->new( {
 $config->define( "accessFileList=s"             );
 $config->define( "afconvert=s"                  );
 $config->define( "afpMount=s"                   );
+$config->define( "appUser=s"                    );
+$config->define( "appGroup=s"                   );
 $config->define( "audioDir=s"                   );
 $config->define( "backupBlock=s"                );
 $config->define( "backupDir=s"                  );
@@ -150,6 +152,8 @@ my $mkdir             = $config->get("mkdir");
 my $jira              = $config->get("jira");
 my $sender            = $config->get("sender");
 my $iucat             = $config->get("iucat");
+my $user              = $config->get("appUser");
+my $group             = $config->get("appGroup");
 
 
 # Show help
@@ -315,6 +319,9 @@ else {
 my @rmArgs = ("-Rf", $marcTemp);
 system ($remove, @rmArgs) == 0 or
     croak "Failed to remove temporary marc folder: $!";
+
+# One final permission change
+DRA::setPermissions($srcDir,$user,$group);
 
 # Return any accumulated errors to STDOUT
 if (%errors) {
