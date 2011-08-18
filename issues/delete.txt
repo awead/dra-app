@@ -1,0 +1,16 @@
+Problem:
+    Delete script hangs when it can't delete a file on the remote station
+
+Desc:
+Presently the delete script is hanging when it encounters a file that it can't
+delete. There is a file on the MAC PC that is doing this, it looks
+like the script runs normally until it encounters this file, then it never
+exits leaving the MAC share mounted which cause the MAC scripts to bail on
+subsequent runs. 
+
+Error Message:
+scripts/mac-delete.sh did not run properly. Error code was 2304 :
+rm: /Users/audiopro/Applications/DRA/mount/20110721_2000_aud_vac1248:
+Operation not permitted
+Failed to remove 20110721_2000_aud_vac1248 from remote station at
+/Users/audiopro/Applications/DRA/bin/dra-delete line 351
