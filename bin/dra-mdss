@@ -165,6 +165,9 @@ my $kdestroy     = $config->get( "kdestroy"         );
 my $htarOptLine  = $config->get( "htarOpts"         );
 my $htarUser     = $config->get( "htarUser"         );
 
+# Video variables
+my $videoExts    = $config->get( "interestedAccessVideoExts" );
+
 # Initialize command line switches
 my $force        = $config->get("f");
 
@@ -200,6 +203,7 @@ if ($run) {
 # Build paths to the necessary directories
 my $accessDir = Path::Class::Dir->new($projectDir, "access");
 my $logDir    = Path::Class::Dir->new($accessDir, "logs");
+my $videoDir  = Path::Class::Dir->new($projectDir, "video");
 
 
 # Build paths to necessary files
@@ -226,6 +230,11 @@ DRA::logger(
     $logFile
 );
 
+# Check for DVD image files
+my @dvdImages = DRA::readDirectory($accessDir, $videoExts);
+my $imgCount = scalar (@dvdImages);
+
+
 # Check the force option
 if ( $force ) {
     my $message
@@ -238,6 +247,13 @@ else {
     if ( (-e $transferErrorLog) or (! -e $transferLog) ) {
         my $message
             = "Concert was not successfully sent to the library. "
+            . "Skipping this project directory for now.";
+        DRA::logger($message, $logFile);
+        exit 0;
+    }
+    elsif ( (-e $videoDir) and ($imgCount == 0) ) {
+        my $message
+            = "We're still waiting on the DVD image files. "
             . "Skipping this project directory for now.";
         DRA::logger($message, $logFile);
         exit 0;
@@ -276,6 +292,31 @@ else {
     DRA::logger("No data file found! Exiting...", $logFile);
     croak "No MDSS data file! \n";
 }
+
+# Get video data file, if needed
+if (-e $videoDir) {
+    
+    my $videoData;
+    my $videoDataFile = $id . "_MDSSVideoData.dat";
+    my $videoDataPath = Path::Class::File->new($logDir, $videoDataFile);
+    DRA::logger("Getting video datafile $videoDataFile", $logFile);
+    if (-e $videoDataPath) {
+        $videoData = retrieve $videoDataPath;
+        if (!$data) {
+            DRA::logger("Error reading video datafile! Exiting...", $logFile);
+            croak "Couldn't read the MDSS video data file ! \n";
+        }
+    }
+    else {
+        DRA::logger("No video data file found! Exiting...", $logFile);
+        croak "No MDSS video data file! \n";
+    }
+
+    # Merge video data file with audio data file 
+
+}
+
+
 
 # Rename files and folders in the project directory
 DRA::logger("Renaming files and folders in the root folder", $logFile);
