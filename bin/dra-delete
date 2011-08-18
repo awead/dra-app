@@ -349,10 +349,10 @@ foreach my $projectDir (@localDirs) {
         my $backupDirPath = Path::Class::Dir->new($backupPath, $projectDir);
         DRA::logger("... removing from remote station", $logFile);
         system($remove, "-R", "-f", $remoteDirPath) == 0
-            or croak "Failed to remove $projectDir from remote station";
+            or main::myCroak("Failed to remove $projectDir from remote station");
         DRA::logger("... removing from backup folder", $logFile);
         system($remove, "-R", "-f", $backupDirPath) == 0
-            or croak "Failed to remove $projectDir from backup folder";
+            or main::myCroak("Failed to remove $projectDir from backup folder");
 
     }
 
@@ -399,6 +399,25 @@ sub error {
 sub help {
     print "Usage: dra-delete [-help] [dra.conf options]\n";
 }
+
+
+# -------------------------------------------------------------------
+# Name: myCroak
+# Desc: Unmounts share and croaks
+# -------------------------------------------------------------------
+
+sub myCroak {
+    
+    my $message = shift;
+
+    DRA::logger("Script failed; unmounting share", $logFile);
+    system($umount, $umountArgs, $mpPath) == 0 
+        or croak "Failed to unmount $mpPath \n";
+    
+    croak $message;
+
+}
+
 
 
 __END__

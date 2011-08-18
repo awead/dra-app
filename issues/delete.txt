@@ -14,3 +14,8 @@ rm: /Users/audiopro/Applications/DRA/mount/20110721_2000_aud_vac1248:
 Operation not permitted
 Failed to remove 20110721_2000_aud_vac1248 from remote station at
 /Users/audiopro/Applications/DRA/bin/dra-delete line 351
+
+Fix:
+Couldn't figure out the folder would delete.  Was able to reproduce the
+problem, except for the hanging part.  To that end, I modified the script to
+unmount the share before it croaks from a failure.
