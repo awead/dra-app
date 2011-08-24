@@ -5,3 +5,12 @@ is changed from 'Ambience' to 'End'. The track name is correct in the version
 in the backup folder. I did a test – I manually ran the backup script on a
 test folder, the behavior was the same – correct track name in the backup
 folder, incorrect in the concert_archive folder
+
+Questions:
+
+1. Does this happen every time?
+
+2. The track name is getting re-written in the wav file? So, somewhere in the
+header?
+ - difficult to pin-down the problem since the backup and transfer process are
+   both the same, each replying on rsync.
