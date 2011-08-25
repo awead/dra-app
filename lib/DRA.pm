@@ -1662,6 +1662,29 @@ sub setPermissions {
 
 }
 
+# -------------------------------------------------------------------------
+# Name:    sshCommand
+# Desc:    Runs command over ssh
+# Inputs:  user, ssh key, host, command
+# Outputs: stdout and stderr
+# -------------------------------------------------------------------------
+
+sub sshCommand {
+
+    my ($arg_ref) = @_;
+    
+    my $user    = $arg_ref->{user};
+    my $sshKey  = $arg_ref->{sshKey};
+    my $host    = $arg_ref->{host};
+    my $command = $arg_ref->{command};
+
+    my $hostString = $user . "@" . $host;
+    my @args = ( "-i", $sshKey, $hostString, $command);
+    my ($stdout, $stderr) = DRA::runQuietCommand("ssh", @args);
+
+    return ($stdout, $stderr);
+
+}
 
 
 1;

@@ -1,0 +1,410 @@
+#!/usr/bin/perl -w
+# ----------------------------------------------------------------------------
+# Name:  dra-video
+# Desc:  Sends a video project to the dra server and mdss
+# Args:  Project folder
+#
+# Adam Wead
+# Jacobs School of Music
+# Indiana University
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+#
+# Setup libraries and packages
+#
+# ----------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+use Storable;
+
+# ----------------------------------------------------------------------------
+#
+# Define application-wide variables
+#
+# ----------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+# Define all video.conf variables
+$config->define( "audioDir=s" );
+$config->define( "conversionErrorLog=s" );
+$config->define( "conversionLog=s" );
+$config->define( "copiedLog=s" );
+$config->define( "draKey=s" );
+$config->define( "draServer=s" );
+$config->define( "draUser=s" );
+$config->define( "errorLog=s" );
+$config->define( "logDir=s" );
+$config->define( "mdssErrorLog=s" );
+$config->define( "mdssLog=s" );
+$config->define( "remoteBlock=s" );
+$config->define( "rsyncLog=s" );
+$config->define( "semester=s" );
+$config->define( "sentToBeBurnedLog=s" );
+$config->define( "videoDirs=s" );
+$config->define( "videoErrorLog=s" );
+$config->define( "videoTransLog=s" );
+$config->define( "videoLog=s" );
+
+# Command line switches
+$config->define("f!");
+$config->define("help!");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "video.conf" );
+if ( !-e $confFile ) {
+    die "video.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+# Initialize only the variables we'll be using here
+my $draServer         = $config->get( "draServer"     );
+my $draUser           = $config->get( "draUser"       );
+my $draKey            = $config->get( "draKey"        );
+my $audioDir          = $config->get( "audioDir"      );
+my $semester          = $config->get( "semester"      );
+my $remoteBlockList   = $config->get( "remoteBlock"   );
+my $remoteErrorLog    = $config->get( "errorLog"      );
+my $remoteTransferLog = $config->get( "copiedLog"     );
+my $videoLog          = $config->get( "videoLog"      );
+my $videoErrorLog     = $config->get( "videoErrorLog" );
+my $videoTransLog     = $config->get( "videoTransLog" );
+my $logDir            = $config->get( "logDir"        );
+
+# Initialize command line switches
+my $force        = $config->get("f");
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+# Check input
+if (! $ARGV[0]) {
+    main::error("No folder specified"); 
+}
+my $projectDir = Path::Class::Dir->new($ARGV[0]);
+if (! -d $projectDir) {
+    main::error("Specified folder does not exist");
+}
+            
+# Check our local block list
+#my $run = DRA::checkBlocks($blockList);
+#if ($run) {
+#    croak($run);
+#}
+
+
+# ----------------------------------------------------------------------------
+#
+# Do some stuff
+#
+# ----------------------------------------------------------------------------
+
+# Build paths to files and folders
+my $remoteProjectDir = Path::Class::Dir->new($audioDir, $semester);
+my $remoteAccessDir  = Path::Class::Dir->new($remoteProjectDir, "access" );
+my $projectLogDir    = Path::Class::Dir->new($projectDir, "logs" );
+my $remoteLogDir     
+    = Path::Class::Dir->new($remoteProjectDir, "access", "logs" );
+
+my $sshKeyPath       = Path::Class::File->new($ENV{DRA_HOME}, "conf", $draKey);
+my $projectLogPath   = Path::Class::File->new($projectLogDir, $videoLog );
+my $errorLogPath     = Path::Class::File->new($projectLogDir, $videoErrorLog );
+my $videoLogPath     = Path::Class::File->new($logDir, $videoLog);
+
+DRA::logger("dra-video processing $projectDir", $videoLogPath);
+
+# Create a log directory
+if (! -e $logDir) {
+    system("mkdir", $logDir) == 0
+        or croak "Failed to created log directory: $!\n";
+}
+
+
+# TODO
+# Check status of project locally
+#  exit if not ready
+#  proceed on force
+#  proceed if ready
+#  exit if previously completed
+
+
+# Check block list on remote server
+my $checkCommand = "ps -ax";
+my $runningProcs = main::remoteCommand($checkCommand);
+my @blocks = split / /, $remoteBlockList;
+my @remoteProcs;
+foreach my $block (@blocks) {
+    if ($runningProcs =~ /$block/) {
+        push @remoteProcs, $block;
+    }
+}
+if (@remoteProcs) {
+    my $list = join ", ", @remoteProcs;
+    my $message
+        = "The following blocking processed were detected on the "
+        . "remote system: " . $list
+        . "Script will terminate now."
+        ;
+    DRA::logger($message, $videoLogPath);
+    exit 0;
+}
+
+
+# Log in to DRA server and determine status of project
+if ( (main::remoteFileExists($remoteErrorLog))
+        or (! main::remoteFileExists($remoteTransferLog)) ) {
+    my $message
+        = "The audio portion of the concert has not been successfully "
+        . "transferred to Variations yet."
+        ;
+        DRA::logger($message, $videoLogPath);
+}
+else {
+
+    # Project on the remote server is ready for video data
+
+    # Are there no dvd image files on the remote server?
+    #  yes? then copy them up
+    #       send video filename data file
+    # 
+    # Did MDSS successfully run on the remote server?
+    #  yes? then send video files to mdss
+    #
+    # Else
+    #  dra-video processed everything at an earlier time
+
+}
+
+DRA::logger("dra-video finished.", $videoLogPath);
+
+# end main
+
+
+# ----------------------------------------------------------------------------
+#
+# Subroutines
+#
+# ----------------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+        &main::help;
+    }
+    
+    exit 1;
+}
+
+sub help {
+    print "Usage: dra-mdss [-help] [-f] [video.conf options] [project_directory] \n";
+}
+
+
+
+# -------------------------------------------------------------------
+# Name: remoteCommand
+# Desc: Runs command on remote system croaking on any error
+# -------------------------------------------------------------------
+
+sub remoteCommand {
+    
+    my $command = shift;
+
+    my ($out, $err) = DRA::sshCommand(
+        {
+        user    => $draUser,
+        sshKey  => $sshKeyPath,
+        host    => $draServer,
+        command => $command,
+        }
+    );
+
+    if ($err) {
+        croak "Remote command failed.  Error was:\n $err";
+    }
+    else {
+        return $out;
+    }
+
+}
+
+
+
+# -------------------------------------------------------------------
+# Name: remoteQuietCommand
+# Desc: Runs command on remote system quietly returning any errors
+# -------------------------------------------------------------------
+
+sub remoteQuietCommand {
+    
+    my $command = shift;
+
+    my ($out, $err) = DRA::sshCommand(
+        {
+        user    => $draUser,
+        sshKey  => $sshKeyPath,
+        host    => $draServer,
+        command => $command,
+        }
+    );
+
+    return ($out, $err);
+
+}
+
+
+# -----------------------------------------------------------------------------
+# Name: remoteFileExists
+# Desc: Detects presence of file in the project directory of the remote system
+#       Returns 0 if file does not exists or the underlying command returns
+#       an error.
+#       Returns 1 if the file exists, or the underlying command returns
+#       success.
+# Reqs: Requires remoteProjectDir variable which should be declared earlier in
+#       the script.
+# Inpt: Name of the file
+# Outp: 0 for not found; 1 if the file is found
+# -----------------------------------------------------------------------------
+
+sub remoteFileExists {
+
+    my $file = shift;
+    my $command = "find $remoteProjectDir -name $file";
+    my ($out, $err) = main::remoteQuietCommand($command);
+
+    if ($err) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
+
+}
+
+
+__END__
+
+=head1 DRA-MDSS
+
+dra-mdss - Transfers projects to IU's mass data storage facility
+
+=head1 VERSION
+
+This documentation refers to dra-mdss version 2.0.
+
+=head1 USAGE
+
+B<dra-mdss [-help] [-f] [dra.conf options] [project_directory]>
+
+=head1 REQUIRED ARGUMENTS
+
+A B<project directory> is required for the script to run. This must be the full
+path the directory.  For example:
+
+B<dra-mdss /Volumes/audio/Concerts/2010_fall/20100923vab1234>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+
+B<-f> Force flag.  The project will be transferred to mdss regardless of any errors 
+or if the concert was successfully sent at an earlier time.
+ 
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+
+-[variable name] [value]
+
+Example:
+
+B<dra-mdss -email joebob@indiana.edu [directory]>
+
+Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu
+
+=head1 DESCRIPTION
+
+dra-mdss will take a project folder that had been successfully processed by the dra-transfer
+script and send it to the mdss storage facility for archiving. During this processes, files
+will be renamed and checksums will be computed and stored along with the original files to
+ensure accurate transfers in the future.
+
+The script will continue to process a project directory until there is a successful
+outcome.  Once the project has been successfully sent to mdss, any further executions
+on that particular project directory will have no effect. Using the force option,
+(-f) will override this and re-send the project to mdss.
+
+=head1 DIAGNOSTICS
+
+Upon successful execution, the dra-mdss with exit with no output. Any fatal
+error will be written to standard output and the application will exit immediately.
+Messages are written to the application's own log file found in the application
+log directory, as well as a separate log file found in the project's log
+directory in the access folder.
+
+In the case of errors written to standard out, the error will appear on the
+command line shell or will be collected by the calling script, usually
+dra-run. The presence of any fatal error will cause the script to write an
+error log to the project log directory found in the access folder of the
+project. The presence of this file will mean dra-mdss will run again when
+called either directly or by dra-run.
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+A properly configured dra.conf file should be sufficient for dra-mdss
+script to run.
+
+The DRA_HOME environment variable is required and can be set on a per-user basis
+or at execution time.
+
+=head1 DEPENDENCIES
+
+HTAR and HSI are required to send the files to MDSS.  These applications are
+available through IU's mass datastore service.  See http://kb.iu.edu/data/auvo.html
+for the latest client builds available.
+
+You will also need to create kerberos keytab files to enable automate access to the mdss account.
+For more information on creating keytab files, see http://kb.iu.edu/data/avdb.html.
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
+
+Travis Gregg  
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2010, the Trustees of Indiana University.
+
+=cut
+
