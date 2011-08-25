@@ -139,7 +139,6 @@ if (! -e $logDir) {
         or croak "Failed to created log directory: $!\n";
 }
 
-
 # TODO
 # Check status of project locally
 #  exit if not ready
@@ -169,8 +168,8 @@ if (@remoteProcs) {
     exit 0;
 }
 
-
 # Log in to DRA server and determine status of project
+# TODO: more informative message if the project isn't even there!
 if ( (main::remoteFileExists($remoteErrorLog))
         or (! main::remoteFileExists($remoteTransferLog)) ) {
     my $message
@@ -182,6 +181,8 @@ if ( (main::remoteFileExists($remoteErrorLog))
 else {
 
     # Project on the remote server is ready for video data
+
+    # if there's no access folder, then it's not ready...
 
     # Are there no dvd image files on the remote server?
     #  yes? then copy them up
