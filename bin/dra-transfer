@@ -212,6 +212,7 @@ if ($run) {
 # Build paths to the necessary directories
 my $accessDir = Path::Class::Dir->new( $projectDir, "access" );
 my $logDir    = Path::Class::Dir->new( $accessDir,  "logs" );
+my $videoDir  = Path::Class::Dir->new( $projectDir, "video" );
 
 # Temporary directory on variations server
 my $tempDir  = Path::Class::Dir->new($tempDirectory);
@@ -300,6 +301,29 @@ my ( $datedDir, $hallEmail, $varID, $mdssPrefix, $errMsg ) =
   DRA::checkProjectDir( $projectDir, $hallList );
 if ($errMsg) {
     push @errors, $errMsg;
+}
+
+# If this has video, we wait until we have the MDSSVideoFileNames.txt file
+# sent over from the dra-video script on the video workstations
+DRA::logger( "Does this project have video?", $logFile );
+my $videoNamesFile = $varID . "_MDSSVideoFileNames.txt";
+my $videoList = Path::Class::File->new( $logDir, $videoNamesFile );
+if ( -e $videoDir) {
+    DRA::logger( "...yes. Checking for file listing", $logFile );
+    if (-e $videoList) {
+        DRA::logger( "Video list found, proceeding with transfer", $logFile );
+    }
+    else {
+        my $message
+            = "The video list was not found, meaning that we're still "
+            . "waiting for the file list to be sent over from from the "
+            . "video work station. Once we have it, this script can proceed.";
+        DRA::logger( $message, $logFile );
+        exit 0;
+    }
+}
+else {
+    DRA::logger( "...nope. Moving on.", $logFile );
 }
 
 # Rename any pdfs
