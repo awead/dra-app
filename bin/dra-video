@@ -49,6 +49,7 @@ $config->define( "draKey=s" );
 $config->define( "draServer=s" );
 $config->define( "draUser=s" );
 $config->define( "errorLog=s" );
+$config->define( "hallList=s" );
 $config->define( "logDir=s" );
 $config->define( "mdssErrorLog=s" );
 $config->define( "mdssLog=s" );
@@ -56,6 +57,7 @@ $config->define( "remoteBlock=s" );
 $config->define( "rsyncLog=s" );
 $config->define( "semester=s" );
 $config->define( "sentToBeBurnedLog=s" );
+$config->define( "sshOpts=s" );
 $config->define( "videoDirs=s" );
 $config->define( "videoErrorLog=s" );
 $config->define( "videoTransLog=s" );
@@ -75,18 +77,22 @@ $config->file("$confFile");
 $config->args();
 
 # Initialize only the variables we'll be using here
-my $draServer         = $config->get( "draServer"     );
-my $draUser           = $config->get( "draUser"       );
-my $draKey            = $config->get( "draKey"        );
-my $audioDir          = $config->get( "audioDir"      );
-my $semester          = $config->get( "semester"      );
-my $remoteBlockList   = $config->get( "remoteBlock"   );
-my $remoteErrorLog    = $config->get( "errorLog"      );
-my $remoteTransferLog = $config->get( "copiedLog"     );
-my $videoLog          = $config->get( "videoLog"      );
-my $videoErrorLog     = $config->get( "videoErrorLog" );
-my $videoTransLog     = $config->get( "videoTransLog" );
-my $logDir            = $config->get( "logDir"        );
+my $draServer          = $config->get( "draServer"     );
+my $draUser            = $config->get( "draUser"       );
+my $draKey             = $config->get( "draKey"        );
+my $audioDir           = $config->get( "audioDir"      );
+my $semester           = $config->get( "semester"      );
+my $remoteBlockList    = $config->get( "remoteBlock"   );
+my $remoteErrorLog     = $config->get( "errorLog"      );
+my $remoteTransferLog  = $config->get( "copiedLog"     );
+my $remoteMdssLog      = $config->get( "mdssLog"       );
+my $remoteMdssErrorLog = $config->get( "mdssErrorLog"  );
+my $videoLog           = $config->get( "videoLog"      );
+my $videoErrorLog      = $config->get( "videoErrorLog" );
+my $videoTransLog      = $config->get( "videoTransLog" );
+my $logDir             = $config->get( "logDir"        );
+my $hallList           = $config->get( "hallList"      );
+my $sshOpts            = $config->get( "sshOpts"       );
 
 # Initialize command line switches
 my $force        = $config->get("f");
@@ -119,12 +125,9 @@ if (! -d $projectDir) {
 #
 # ----------------------------------------------------------------------------
 
-# Build paths to files and folders
-my $remoteProjectDir = Path::Class::Dir->new($audioDir, $semester);
-my $remoteAccessDir  = Path::Class::Dir->new($remoteProjectDir, "access" );
-my $projectLogDir    = Path::Class::Dir->new($projectDir, "logs" );
-my $remoteLogDir     
-    = Path::Class::Dir->new($remoteProjectDir, "access", "logs" );
+# Build paths to local files and folders
+my $localAccessDir   = Path::Class::Dir->new($projectDir, "access" );
+my $projectLogDir    = Path::Class::Dir->new($projectDir, "access", "logs" );
 
 my $sshKeyPath       = Path::Class::File->new($ENV{DRA_HOME}, "conf", $draKey);
 my $projectLogPath   = Path::Class::File->new($projectLogDir, $videoLog );
@@ -133,19 +136,59 @@ my $videoLogPath     = Path::Class::File->new($logDir, $videoLog);
 
 DRA::logger("dra-video processing $projectDir", $videoLogPath);
 
+# Exit conditions - when the script will stop
+unless ($force) {
+    # No access directory? This is manually created to indicate the project is
+    # ready
+    if (! -e $localAccessDir) {
+        DRA::logger("No access directory found; exiting.", $videoLogPath);
+        exit 0;
+    }
+    # Process log and no error log means it worked
+    if ( (-e $projectLogPath) and (! -e $errorLogPath) ) {
+        DRA::logger(
+            "Video project was successfully processed at an earlier time",
+            $videoLogPath
+        );
+        exit 0;
+    }
+}
+
 # Create a log directory
-if (! -e $logDir) {
-    system("mkdir", $logDir) == 0
+if (! -e $projectLogDir) {
+    system("mkdir", $projectLogDir) == 0
         or croak "Failed to created log directory: $!\n";
 }
 
-# TODO
-# Check status of project locally
-#  exit if not ready
-#  proceed on force
-#  proceed if ready
-#  exit if previously completed
+# Delete error log, if it exists and initialize error array
+if (-e $errorLogPath) {
+    system("rm", $errorLogPath) == 0
+        or croak "Failed to remove error log: $!\n";
+}
+my @errors;
 
+# Check for a well-formed project directory
+DRA::logger( "Checking project directory ...", $videoLogPath );
+my ( $datedDir, $hallEmail, $varID, $mdssPrefix, $errMsg ) =
+  DRA::checkProjectDir( $projectDir, $hallList );
+if ($errMsg) {
+    push @errors, $errMsg;
+}
+
+DRA::logger( "Checking file names ...", $videoLogPath );
+# Check project directory contents
+my $pderr = DRA::checkVideoDirectoryContents($projectDir, $varID);
+if ($pderr) {
+    push @errors, $pderr;
+}
+
+&main::evaluateErrors;
+
+# Build paths to remote files on DRA server
+my $remoteProjectDir = Path::Class::Dir->new($audioDir, $semester, $datedDir);
+my $remoteAccessDir  = Path::Class::Dir->new($remoteProjectDir, "access" );
+my $remoteLogDir     
+    = Path::Class::Dir->new($remoteProjectDir, "access", "logs" );
 
 # Check block list on remote server
 my $checkCommand = "ps -ax";
@@ -161,40 +204,181 @@ if (@remoteProcs) {
     my $list = join ", ", @remoteProcs;
     my $message
         = "The following blocking processed were detected on the "
-        . "remote system: " . $list
+        . "remote system: " . $list . " -- "
         . "Script will terminate now."
         ;
     DRA::logger($message, $videoLogPath);
     exit 0;
 }
 
-# Log in to DRA server and determine status of project
-# TODO: more informative message if the project isn't even there!
-if ( (main::remoteFileExists($remoteErrorLog))
-        or (! main::remoteFileExists($remoteTransferLog)) ) {
-    my $message
-        = "The audio portion of the concert has not been successfully "
-        . "transferred to Variations yet."
-        ;
-        DRA::logger($message, $videoLogPath);
+# Write out list of video files to be included in the marc record
+#
+# Names of each file will reflect the new names they will have after they are
+# renamed later in this script.
+DRA::logger("Checking for local video file list", $videoLogPath);
+my $listName = $varID . "_MDSSVideoFileNames.txt";
+my $listPath = Path::Class::File->new( $projectLogDir, $listName );
+if ( (-e $listPath ) and (! $force) ) {
+    DRA::logger("...it's there; moving on", $videoLogPath );
 }
 else {
-
-    # Project on the remote server is ready for video data
-
-    # if there's no access folder, then it's not ready...
-
-    # Are there no dvd image files on the remote server?
-    #  yes? then copy them up
-    #       send video filename data file
-    # 
-    # Did MDSS successfully run on the remote server?
-    #  yes? then send video files to mdss
-    #
-    # Else
-    #  dra-video processed everything at an earlier time
+    DRA::logger(
+        "...it's not there; creating video file list", 
+        $videoLogPath
+    );
+    my @videoContents = DRA::readDirectory($projectDir);
+    my @videoFiles;
+    foreach my $f (@videoContents) {
+        unless ($f =~ /^access$/) {
+            my $newName = $mdssPrefix . "_" . $f;
+            push @videoFiles, $newName;
+        }
+    }
+    my $videoFileList = join "; ", @videoFiles;
+    my $list 
+        = "Video files stored on MDSS in \"audiopro\" account: "
+        . $videoFileList;
+    DRA::logger(
+        "...writting video file list to local project directory", 
+        $videoLogPath
+    );
+    DRA::writer( $list, $listPath );
 
 }
+
+# Send video filename list
+DRA::logger(
+    "Checking to see if the video list is on the remote server",
+    $videoLogPath
+);
+my $remoteListFile = Path::Class::File->new($remoteLogDir, $listName);
+if ( (main::remoteFileExists($listName)) and (! $force) ) {
+    DRA::logger("...it is; moving on", $videoLogPath);
+}
+else {
+    if ($force) {
+        DRA::logger("...force option! Sending to server", $videoLogPath);
+    }
+    else {
+        DRA::logger("...it's not; sending list to server", $videoLogPath);
+    }
+    my $err = DRA::sendSCP(
+        {
+            user   => $draUser,
+            key    => $sshKeyPath,
+            opts   => $sshOpts,
+            source => $listPath,
+            dest   => $remoteListFile,
+            host   => $draServer,
+        }
+    );
+    
+    if ($err) {
+        DRA::logger( 
+            "File list copy failed -- see error log",
+            $videoLogPath 
+        );
+        push @errors, $err;
+    }
+    
+    &main::evaluateErrors;
+}
+
+
+# Log in to DRA server and determine status of project
+#
+# Script will not continue until the project has been completely transferred
+# to MDSS.  If there is any error log, the script will stop at this point.
+# Once both the Variations and MDSS transfer is complete, this script will
+# transfer the additional video files.
+DRA::logger("Logging into remote server ...", $videoLogPath);
+DRA::logger("Checking project directory: $remoteProjectDir", $videoLogPath);
+DRA::logger("...checking logs under remote project directory", $videoLogPath); 
+if ((! main::remoteFileExists($remoteMdssLog)) or 
+    (main::remoteFileExists($remoteMdssErrorLog)) or
+    (! main::remoteFileExists($remoteTransferLog)) or 
+    (main::remoteFileExists($remoteErrorLog))) {
+     
+    my $message
+        = "The audio portion of the concert has either not been successfully "
+        . "transferred to Variations or MDSS yet."
+        ;
+    DRA::logger($message, $videoLogPath);
+    exit 0;
+}
+
+# Okay, we're good to go...
+DRA::logger("Remote project is ready for video data", $videoLogPath);
+DRA::logger("Copying DVD files to remote DRA server", $videoLogPath);
+my @dvdFiles = DRA::readDirectory($projectDir, "img");
+foreach my $dvd (@dvdFiles) {
+    my $remoteDvd = Path::Class::File->new($remoteProjectDir, "access", $dvd);
+    if (main::remoteFileExists($dvd) and !$force) {
+        my $message = "$dvd has already been transfered";
+        DRA::logger($message, $videoLogPath);
+    }
+    else {
+
+        my $source = Path::Class::File->new($projectDir, $dvd);
+        my $err = DRA::sendSCP(
+            {
+                user   => $draUser,
+                key    => $sshKeyPath,
+                opts   => $sshOpts,
+                source => $source,
+                dest   => $remoteDvd,
+                host   => $draServer,
+            }
+        );
+
+        if ($err) {
+            DRA::logger( 
+                "DVD file copy failed -- see error log",
+                $videoLogPath 
+            );
+            push @errors, $err;
+        }
+
+        DRA::logger("Computing md5 sums", $videoLogPath);
+        my ($md5, $md5err) = DRA::createMD5($source,$dvd);
+        if ($md5err) {
+            DRA::logger( 
+                "MD5 creation failed -- see error log",
+                $videoLogPath 
+            );
+            push @errors, $md5err;
+        }
+
+        DRA::logger("Checking md5 sums for $dvd ...", $videoLogPath);
+        my $md5Path = Path::Class::File->new($projectDir, $md5);
+        my $md5sum = DRA::getMD5($md5Path);
+        my $remoteMd5Command = "md5 -q " . $remoteDvd;
+        my $remoteMd5 = main::remoteCommand($remoteMd5Command);
+        if ($md5sum eq $remoteMd5) {
+            my $message
+                = "sums are the same - check passed";
+            DRA::logger($message, $videoLogPath);
+        }
+        else {
+            my $message
+                = "sums differ - check failed";
+            DRA::logger($message, $videoLogPath);
+            push @errors, $message;
+        }
+       
+    }
+}
+
+&main::evaluateErrors;
+
+
+# 
+# Did MDSS successfully run on the remote server?
+#  yes? then send video files to mdss
+#
+# Else
+#  dra-video processed everything at an earlier time
+
 
 DRA::logger("dra-video finished.", $videoLogPath);
 
@@ -306,14 +490,48 @@ sub remoteFileExists {
     my ($out, $err) = main::remoteQuietCommand($command);
 
     if ($err) {
-        return 0;
+        my $message
+            = "Remote find command failed - script aborting "
+            . "Error was:\n$err";
+        DRA::logger($message, $errorLogPath);
+        DRA::logger($message, $videoLogPath);
+        croak $message;
     }
     else {
-        return 1;
+        if ($out) {
+            return 1;
+        }
+        else {
+            return 0;
+        }
     }
 
 }
 
+# -----------------------------------------------------------------------------
+# Name: evaliuateErrors
+# Desc: Checks the @error array for messages and croaks if there are any
+# -----------------------------------------------------------------------------
+
+sub evaluateErrors {
+
+    if ($errors[0]) {
+        my $line = join "\n", @errors;
+        if ($force) {
+            DRA::logger("Errors found - ignoring", $videoLogPath);
+            DRA::logger("Errors were: $line", $videoLogPath);
+        }
+        else {
+            DRA::logger("Errors were found - writing to log", $videoLogPath);
+            DRA::logger( $line,                               $errorLogPath);
+            croak(
+                qq{Errors were found with the project directory\n},
+                qq{Script will terminate now\n},
+            );
+        }
+    }
+
+}
 
 __END__
 

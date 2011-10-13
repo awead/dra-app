@@ -613,6 +613,46 @@ sub checkDirectoryContents {
 }
 
 
+
+# -------------------------------------------------------------------------
+# Name:    checkVideoDirectoryContents
+# Desc:    Checks the contents of a video project directory.
+# Inputs:  directory
+# Outputs: errors, if any
+# -------------------------------------------------------------------------
+
+sub checkVideoDirectoryContents {
+
+    my $dir   = shift;
+    my $varId = shift;
+    my @errors;
+
+    my $typeList = "accessDVD preservationProRes422 preservationVideo";
+
+    my @files = DRA::readDirectory($dir);
+    foreach my $file (@files) {
+        unless ($file =~ /^access$/) {
+            my @parts = split /_/, $file;
+            unless ($parts[0] =~ /^$varId/) {
+                push @errors, "$file does not match Variations ID";
+            }
+            unless ($typeList =~ /$parts[1]/) {
+                push @errors, "Incorrect filename type: $parts[1]";
+            }
+        }
+    }
+
+    if ($errors[0]) {
+        my $line = join " -- ", @errors;
+        return $line;
+    }
+    else {
+        return 0;
+    }
+
+
+}
+
 # -------------------------------------------------------------------------
 # Name:    checkSubdirectories
 # Desc:    Checks that any subdiretory, usually in the root of the
@@ -897,6 +937,24 @@ sub createMD5 {
 
 }
 
+
+# -------------------------------------------------------------------------
+# Name:    getMD5
+# Desc:    Gets the md5 sum from the file outputted by createMD5
+# Inputs:  full path to file
+# Outputs: md5 sum
+# -------------------------------------------------------------------------
+sub getMD5 {
+
+    my $file = shift;
+    open (FILE, $file) or croak "Can't open $file \n";
+    my @line = <FILE>;
+    close (FILE);
+    chomp @line;
+    my ($md5, $junk) = split / /, $line[0];
+    return $md5;
+
+}
 
 
 # -------------------------------------------------------------------------
