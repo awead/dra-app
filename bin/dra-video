@@ -364,6 +364,8 @@ foreach my $dvd (@dvdFiles) {
         else {
             my $message
                 = "sums differ - check failed";
+            # TODO: need to delete the remote file
+            # otherwise the script will continue next time
             DRA::logger($message, $videoLogPath);
             push @errors, $message;
         }
@@ -373,13 +375,8 @@ foreach my $dvd (@dvdFiles) {
 
 &main::evaluateErrors;
 
+# Now we send all the files from this video station to MDSS
 
-# 
-# Did MDSS successfully run on the remote server?
-#  yes? then send video files to mdss
-#
-# Else
-#  dra-video processed everything at an earlier time
 
 
 DRA::logger("dra-video finished.", $videoLogPath);
