@@ -50,6 +50,10 @@ $config->define( "draServer=s" );
 $config->define( "draUser=s" );
 $config->define( "errorLog=s" );
 $config->define( "hallList=s" );
+$config->define( "hsi=s" );
+$config->define( "hsiOpts=s" );
+$config->define( "hsiPorts=s" );
+$config->define( "keytab=s" );
 $config->define( "logDir=s" );
 $config->define( "mdssErrorLog=s" );
 $config->define( "mdssLog=s" );
@@ -58,6 +62,7 @@ $config->define( "rsyncLog=s" );
 $config->define( "semester=s" );
 $config->define( "sentToBeBurnedLog=s" );
 $config->define( "sshOpts=s" );
+$config->define( "tempDir=s" );
 $config->define( "videoDirs=s" );
 $config->define( "videoErrorLog=s" );
 $config->define( "videoTransLog=s" );
@@ -93,6 +98,11 @@ my $videoTransLog      = $config->get( "videoTransLog" );
 my $logDir             = $config->get( "logDir"        );
 my $hallList           = $config->get( "hallList"      );
 my $sshOpts            = $config->get( "sshOpts"       );
+my $hsi                = $config->get( "hsi"           );
+my $hsiOptLine         = $config->get( "hsiOpts"       );
+my $hsiPorts           = $config->get( "hsiPorts"      );
+my $keytab             = $config->get( "keytab"        );
+my $tempDir            = $config->get( "tempDir"       );
 
 # Initialize command line switches
 my $force        = $config->get("f");
@@ -133,6 +143,10 @@ my $sshKeyPath       = Path::Class::File->new($ENV{DRA_HOME}, "conf", $draKey);
 my $projectLogPath   = Path::Class::File->new($projectLogDir, $videoLog );
 my $errorLogPath     = Path::Class::File->new($projectLogDir, $videoErrorLog );
 my $videoLogPath     = Path::Class::File->new($logDir, $videoLog);
+
+my $keytabFile
+    = Path::Class::File->new( $ENV{DRA_HOME}, "conf", $keytab );
+
 
 DRA::logger("dra-video processing $projectDir", $videoLogPath);
 
@@ -373,10 +387,22 @@ foreach my $dvd (@dvdFiles) {
     }
 }
 
+# Check transfer of DVD files to audio server
 &main::evaluateErrors;
 
-# Now we send all the files from this video station to MDSS
+# If it gets this far, it's time to send the files to mdss
+# Send individual files to mdss via hsi
+DRA::logger("Sending individual files to MDSS", $videoLogPath);
+my $remoteMdssDir = Path::Class::Dir->new($semester, $datedDir);
+foreach my $dvd (@dvdFiles) {
+    my $error = main::sendFiles($projectDir, $remoteMdssDir, $dvd);
+    if ($error) {
+        push @errors, $error;
+    }
+}
 
+# Check transfer of DVD files to mdss
+&main::evaluateErrors;
 
 
 DRA::logger("dra-video finished.", $videoLogPath);
@@ -390,6 +416,112 @@ DRA::logger("dra-video finished.", $videoLogPath);
 #
 # ----------------------------------------------------------------------------
 
+
+# ----------------------------------------------------------------------------
+# Name:    sendFiles
+# Desc:    Since this process for sending files from the access and preservation
+#          folders is pretty much the same, I created a subroutine to do it.
+#          Note: this sub is verbatim from dra-mdss with minor mods
+#          Not very DRY....
+# Inputs:  local source directory, remote directory, filename
+# Outputs: Errors, if any
+# ----------------------------------------------------------------------------
+sub sendFiles {
+
+    my ($srcDir, $remoteSrcDir, $file) = @_;
+    my @errors;
+    
+    my $src = Path::Class::File->new($srcDir, $file);
+    # Create MD5 sum
+    DRA::logger("Creating MD5 sum for $file ...", $videoLogPath);
+    my ($md5file, $error) = DRA::createMD5($src, $file);
+    if ($error) {
+        DRA::logger("Failed!", $videoLogPath);
+        my $message = "MD5 creation failed: $error";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("done.", $videoLogPath);
+    }
+
+    # Send MD5 sum to MDSS
+    my $md5src  = $file . ".md5";
+    my $md5path = Path::Class::File->new($srcDir, $md5src);
+    my $md5dest = Path::Class::File->new($remoteSrcDir, $md5src);
+    DRA::logger("Sending MD5 file $md5src ...", $videoLogPath);
+    my $put_err1 = DRA::hsiPut(
+        {
+        source => $md5path,
+        dest   => $md5dest,
+        hsi    => $hsi,
+        opts   => $hsiOptLine,
+        ports  => $hsiPorts,
+        keytab => $keytabFile,
+        }
+    );
+    if ($put_err1) {
+        DRA::logger("Failed!", $videoLogPath);
+        my $message = "Failed to send file: $!";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("done.", $videoLogPath);
+    }
+        
+    # Send file to MDSS
+    my $dest = Path::Class::File->new($remoteSrcDir, $file);
+    DRA::logger("Sending $file ...", $videoLogPath);
+    my $put_err2 = DRA::hsiPut(
+        {
+        source => $src,
+        dest   => $dest,
+        hsi    => $hsi,
+        opts   => $hsiOptLine,
+        ports  => $hsiPorts,
+        keytab => $keytabFile,
+        }
+    );
+    if ($put_err2) {
+        DRA::logger("Failed!", $videoLogPath);
+        my $message = "Failed to send file: $!";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("done.", $videoLogPath);
+    }
+        
+    # Check transfer
+    DRA::logger("Verifying ...", $videoLogPath);
+    my $check_err = DRA::hsiCheck(
+        {
+        file   => $file,
+        path   => $remoteSrcDir,
+        hsi    => $hsi,
+        opts   => $hsiOptLine,
+        ports  => $hsiPorts,
+        temp   => $tempDir,
+        keytab => $keytabFile,
+        }
+    );
+    if ($check_err) {
+        DRA::logger("Failed!", $videoLogPath);
+        my $message = "Verification failed: $!";
+        push @errors, $message;
+    }
+    else {
+        DRA::logger("Passed!", $videoLogPath);
+    }
+
+    # Return any errors
+    if (@errors) {
+        my $line = join "\n", @errors;
+        return $line;
+    }
+    else {
+        return 0;
+    }
+
+}
 
 # -------------------------------------------------------------------
 # Name: error, help
