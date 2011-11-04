@@ -631,7 +631,8 @@ sub checkVideoDirectoryContents {
 
     my @files = DRA::readDirectory($dir);
     foreach my $file (@files) {
-        unless ($file =~ /^access$/) {
+        # Ignore access directory and any file named with the jsom prefix
+        unless ( ($file =~ /^access$/) or ($file =~ /^jsom/) ) {
             my @parts = split /_/, $file;
             unless ($parts[0] =~ /^$varId/) {
                 push @errors, "$file does not match Variations ID";

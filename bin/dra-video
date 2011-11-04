@@ -323,13 +323,26 @@ if ((! main::remoteFileExists($remoteMdssLog)) or
 
 # Okay, we're good to go...
 DRA::logger("Remote project is ready for video data", $videoLogPath);
+DRA::logger("Renaming files under the local project directory", $videoLogPath);
+my @videoContents = DRA::readDirectory($projectDir);
+foreach my $oldname (@videoContents) {
+    unless ( ($oldname =~ /^access$/) or ($oldname =~ /^jsom/) ) {
+        my $newname = $mdssPrefix . "_" . $oldname;
+        my $oldPath = Path::Class::File->new($projectDir, $oldname);
+        my $newPath = Path::Class::File->new($projectDir, $newname);
+        my @args = ($oldPath, $newPath);
+        system("mv", @args) == 0 or
+            croak "Failed to rename files in project directory";
+    }
+}
+
+
 DRA::logger("Copying DVD files to remote DRA server", $videoLogPath);
 my @dvdFiles = DRA::readDirectory($projectDir, "img");
 foreach my $dvd (@dvdFiles) {
-    my $remoteDvdName = $mdssPrefix . "_" . $dvd;
     my $remoteDvd 
-        = Path::Class::File->new($remoteProjectDir, "access", $remoteDvdName);
-    if (main::remoteFileExists($remoteDvdName) and !$force) {
+        = Path::Class::File->new($remoteProjectDir, "access", $dvd);
+    if (main::remoteFileExists($dvd) and !$force) {
         my $message = "$dvd has already been transfered";
         DRA::logger($message, $videoLogPath);
     }
