@@ -637,7 +637,7 @@ sub error {
 }
 
 sub help {
-    print "Usage: dra-mdss [-help] [-f] [video.conf options] [project_directory] \n";
+    print "Usage: dra-video [-help] [-f] [video.conf options] [project_directory] \n";
 }
 
 
@@ -759,72 +759,51 @@ sub evaluateErrors {
 
 __END__
 
-=head1 DRA-MDSS
+=head1 DRA-VIDEO
 
-dra-mdss - Transfers projects to IU's mass data storage facility
+dra-video - Transfers video files to local server and MDSS
 
 =head1 VERSION
 
-This documentation refers to dra-mdss version 2.0.
+This documentation refers to dra-video version 2.1.
 
 =head1 USAGE
 
-B<dra-mdss [-help] [-f] [dra.conf options] [project_directory]>
+B<dra-video [-help] [-f] [video.conf options] [project_directory]>
 
 =head1 REQUIRED ARGUMENTS
 
 A B<project directory> is required for the script to run. This must be the full
 path the directory.  For example:
 
-B<dra-mdss /Volumes/audio/Concerts/2010_fall/20100923vab1234>
+B<dra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
 =head1 OPTIONS
 
 B<-help> Displays brief synopsis of usage.
 
-B<-f> Force flag.  The project will be transferred to mdss regardless of any errors 
+B<-f> Force flag.  The project will be transferred regardless of any errors 
 or if the concert was successfully sent at an earlier time.
  
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+B<video.conf> Any setting from the video.conf file may be passed to the script at runtime in the format:
 
 -[variable name] [value]
 
 Example:
 
-B<dra-mdss -email joebob@indiana.edu [directory]>
+B<dra-video -email joebob@indiana.edu [directory]>
 
-Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu
+Will execute the script overriding the email address specified in video.conf with joebob@indiana.edu
 
 =head1 DESCRIPTION
 
-dra-mdss will take a project folder that had been successfully processed by the dra-transfer
-script and send it to the mdss storage facility for archiving. During this processes, files
-will be renamed and checksums will be computed and stored along with the original files to
-ensure accurate transfers in the future.
-
-The script will continue to process a project directory until there is a successful
-outcome.  Once the project has been successfully sent to mdss, any further executions
-on that particular project directory will have no effect. Using the force option,
-(-f) will override this and re-send the project to mdss.
 
 =head1 DIAGNOSTICS
 
-Upon successful execution, the dra-mdss with exit with no output. Any fatal
-error will be written to standard output and the application will exit immediately.
-Messages are written to the application's own log file found in the application
-log directory, as well as a separate log file found in the project's log
-directory in the access folder.
-
-In the case of errors written to standard out, the error will appear on the
-command line shell or will be collected by the calling script, usually
-dra-run. The presence of any fatal error will cause the script to write an
-error log to the project log directory found in the access folder of the
-project. The presence of this file will mean dra-mdss will run again when
-called either directly or by dra-run.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-A properly configured dra.conf file should be sufficient for dra-mdss
+A properly configured video.conf file should be sufficient for dra-video
 script to run.
 
 The DRA_HOME environment variable is required and can be set on a per-user basis
@@ -843,11 +822,9 @@ For more information on creating keytab files, see http://kb.iu.edu/data/avdb.ht
 
 Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
-Travis Gregg  
-
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2011, the Trustees of Indiana University.
 
 =cut
 
