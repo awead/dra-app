@@ -53,6 +53,9 @@ $config->define( "hallList=s" );
 $config->define( "hsi=s" );
 $config->define( "hsiOpts=s" );
 $config->define( "hsiPorts=s" );
+$config->define( "htar=s" );
+$config->define( "htarOpts=s" );
+$config->define( "htarUser=s" );
 $config->define( "keytab=s" );
 $config->define( "logDir=s" );
 $config->define( "mdssErrorLog=s" );
@@ -101,6 +104,9 @@ my $sshOpts            = $config->get( "sshOpts"       );
 my $hsi                = $config->get( "hsi"           );
 my $hsiOptLine         = $config->get( "hsiOpts"       );
 my $hsiPorts           = $config->get( "hsiPorts"      );
+my $htar               = $config->get( "htar"          );
+my $htarOptLine        = $config->get( "htarOpts"      );
+my $htarUser           = $config->get( "htarUser"      );
 my $keytab             = $config->get( "keytab"        );
 my $tempDir            = $config->get( "tempDir"       );
 
@@ -407,19 +413,90 @@ foreach my $dvd (@dvdFiles) {
 &main::evaluateErrors;
 
 # If it gets this far, it's time to send the files to mdss
-# Send individual files to mdss via hsi
-DRA::logger("Sending individual files to MDSS", $videoLogPath);
-my $remoteMdssDir = Path::Class::Dir->new($semester, $datedDir);
-foreach my $dvd (@dvdFiles) {
-    my $error = main::sendFiles($projectDir, $remoteMdssDir, $dvd);
-    if ($error) {
-        push @errors, $error;
+# Send individual files to mdss via hsi and folders via htar
+my @videoFiles;
+my @videoDirs;
+foreach my $name (@videoContents) {
+    my $test = Path::Class::File->new($projectDir, $name);
+    unless ( ($name =~ /^access$/) or ($name =~ /md5$/) ) {
+        if (-f $test) {
+            push @videoFiles, $name;
+        }
+        else {
+            push @videoDirs, $name;
+        }
     }
 }
 
-# Check transfer of DVD files to mdss
+DRA::logger("Sending individual files to MDSS:", $videoLogPath);
+my $remoteMdssDir = Path::Class::Dir->new($semester, $datedDir);
+foreach my $file (@videoFiles) {
+    DRA::logger("... $file", $videoLogPath);
+    my $error = main::sendFiles($projectDir, $remoteMdssDir, $file);
+    if ($error) {
+        push @errors, $error;
+    }
+    DRA::logger("... done", $videoLogPath);
+}
+
+# Check transfer of files to mdss
 &main::evaluateErrors;
 
+# Send directories to MDSS via htar
+DRA::logger("Sending directories via htar:", $videoLogPath);
+foreach my $name (@videoDirs) {
+    # Safety check: make sure we don't tranfer empty directories. We could
+    # be accidentally tranferring a directory that already was
+    # transferred.  Htar removes the contents after a transfer.
+    # Retransfering an empty directory overrites the exising archive with
+    # an empty one. Not cool...
+    my $src = Path::Class::Dir->new($projectDir, $name);
+    my @contents = DRA::readDirectory($src);
+    if (@contents) {
+    
+        # Assume htar will fail.
+        # We create a mdss_error.log file first, and delete it upon
+        # success.
+        my $placeHolder = "PLACEHOLDER: running htar send";
+        DRA::logger($placeHolder, $errorLogPath);
+    
+        my $remotePath = Path::Class::File->new($remoteMdssDir, $name);
+        my ($error, $htarMessage) = DRA::htarSend(
+            {
+            src       => $name,
+            parent    => $projectDir,
+            dest      => $remotePath,
+            htar      => $htar,
+            htarOpts  => $htarOptLine,
+            keytab    => $keytabFile,
+            user      => $htarUser,
+            ports     => $hsiPorts,
+            }
+        );
+        if ($error) {
+            DRA::logger("Failed! Check MDSS error log", $videoLogPath);
+            push @errors, $htarMessage;
+        }
+        else {
+            my $message
+                = "Htar appeared to succeed. Removing placeholder file.\n"
+                . $htarMessage
+                . "\n";
+            DRA::logger($message, $videoLogPath);
+            DRA::clearLog($errorLogPath);
+        }
+    }
+    else {
+        my $message
+            = "Directory $name is empty indicating that it was "
+            . "probably transferred at an earlier time. HTAR will "
+            . "not archive its contents";
+        DRA::logger($message, $videoLogPath);
+    }
+}
+
+# Check transfer of directories to mdss
+&main::evaluateErrors;
 
 DRA::logger("dra-video finished.", $videoLogPath);
 
