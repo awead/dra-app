@@ -249,15 +249,33 @@ else {
     my @videoContents = DRA::readDirectory($projectDir);
     my @videoFiles;
     foreach my $f (@videoContents) {
-        unless ($f =~ /^access$/) {
-            my $newName = $mdssPrefix . "_" . $f;
+        my $test = Path::Class::File->new($projectDir, $f);
+        unless ( ($f =~ /^access$/) or ($f =~ /md5$/) ) {
+            my $newName;
+            if (-f $test) {
+                if ($f =~ /^jsom/) {
+                    $newName = $f;
+                }
+                else {
+                    $newName = $mdssPrefix . "_" . $f;
+                }
+            }
+            else {
+                if ($f =~ /^jsom/) {
+                    $newName = $f . ".tar";
+                }
+                else {
+                    $newName = $mdssPrefix . "_" . $f . ".tar";
+                }
+            }
             push @videoFiles, $newName;
         }
     }
     my $videoFileList = join "; ", @videoFiles;
     my $list 
         = "Video files stored on MDSS in \"audiopro\" account: "
-        . $videoFileList;
+        . $videoFileList
+        . "\n\n";
     DRA::logger(
         "...writting video file list to local project directory", 
         $videoLogPath
