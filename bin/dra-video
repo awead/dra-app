@@ -249,15 +249,33 @@ else {
     my @videoContents = DRA::readDirectory($projectDir);
     my @videoFiles;
     foreach my $f (@videoContents) {
-        unless ($f =~ /^access$/) {
-            my $newName = $mdssPrefix . "_" . $f;
+        my $test = Path::Class::File->new($projectDir, $f);
+        unless ( ($f =~ /^access$/) or ($f =~ /md5$/) ) {
+            my $newName;
+            if (-f $test) {
+                if ($f =~ /^jsom/) {
+                    $newName = $f;
+                }
+                else {
+                    $newName = $mdssPrefix . "_" . $f;
+                }
+            }
+            else {
+                if ($f =~ /^jsom/) {
+                    $newName = $f . ".tar";
+                }
+                else {
+                    $newName = $mdssPrefix . "_" . $f . ".tar";
+                }
+            }
             push @videoFiles, $newName;
         }
     }
     my $videoFileList = join "; ", @videoFiles;
     my $list 
         = "Video files stored on MDSS in \"audiopro\" account: "
-        . $videoFileList;
+        . $videoFileList
+        . "\n\n";
     DRA::logger(
         "...writting video file list to local project directory", 
         $videoLogPath
@@ -346,14 +364,17 @@ foreach my $oldname (@videoContents) {
 DRA::logger("...renamed $renameCount file(s)", $videoLogPath);
 
 
-DRA::logger("Copying DVD files to remote DRA server", $videoLogPath);
+# Begin sending all the files.  Make a note in the script-wide log,
+# then start logging to the project log
+DRA::logger("Sending files to DRA server and MDSS...", $videoLogPath);
+DRA::logger("Copying DVD files to remote DRA server", $projectLogPath);
 my @dvdFiles = DRA::readDirectory($projectDir, "img");
 foreach my $dvd (@dvdFiles) {
     my $remoteDvd 
         = Path::Class::File->new($remoteProjectDir, "access", $dvd);
     if (main::remoteFileExists($dvd) and !$force) {
         my $message = "$dvd has already been transfered";
-        DRA::logger($message, $videoLogPath);
+        DRA::logger($message, $projectLogPath);
     }
     else {
 
@@ -372,22 +393,22 @@ foreach my $dvd (@dvdFiles) {
         if ($err) {
             DRA::logger( 
                 "DVD file copy failed -- see error log",
-                $videoLogPath 
+                $projectLogPath 
             );
             push @errors, $err;
         }
 
-        DRA::logger("Computing md5 sums", $videoLogPath);
+        DRA::logger("Computing md5 sums", $projectLogPath);
         my ($md5, $md5err) = DRA::createMD5($source,$dvd);
         if ($md5err) {
             DRA::logger( 
                 "MD5 creation failed -- see error log",
-                $videoLogPath 
+                $projectLogPath 
             );
             push @errors, $md5err;
         }
 
-        DRA::logger("Checking md5 sums for $dvd ...", $videoLogPath);
+        DRA::logger("Checking md5 sums for $dvd ...", $projectLogPath);
         my $md5Path = Path::Class::File->new($projectDir, $md5);
         my $md5sum = DRA::getMD5($md5Path);
         my $remoteMd5Command = "md5 -q " . $remoteDvd;
@@ -395,14 +416,14 @@ foreach my $dvd (@dvdFiles) {
         if ($md5sum eq $remoteMd5) {
             my $message
                 = "sums are the same - check passed";
-            DRA::logger($message, $videoLogPath);
+            DRA::logger($message, $projectLogPath);
         }
         else {
             my $message
-                = "sums differ - check failed";
-            # TODO: need to delete the remote file
-            # otherwise the script will continue next time
-            DRA::logger($message, $videoLogPath);
+                = "sums differ - check failed. Removing remote file";
+            my $removeDvd = "rm -f $remoteDvd";
+            main:remoteCommand($removeDvd);
+            DRA::logger($message, $projectLogPath);
             push @errors, $message;
         }
        
@@ -414,6 +435,8 @@ foreach my $dvd (@dvdFiles) {
 
 # If it gets this far, it's time to send the files to mdss
 # Send individual files to mdss via hsi and folders via htar
+# Grab a new list of files since they've been renamed
+@videoContents = DRA::readDirectory($projectDir);
 my @videoFiles;
 my @videoDirs;
 foreach my $name (@videoContents) {
@@ -428,22 +451,22 @@ foreach my $name (@videoContents) {
     }
 }
 
-DRA::logger("Sending individual files to MDSS:", $videoLogPath);
+DRA::logger("Sending individual files to MDSS:", $projectLogPath);
 my $remoteMdssDir = Path::Class::Dir->new($semester, $datedDir);
 foreach my $file (@videoFiles) {
-    DRA::logger("... $file", $videoLogPath);
+    DRA::logger("... $file", $projectLogPath);
     my $error = main::sendFiles($projectDir, $remoteMdssDir, $file);
     if ($error) {
         push @errors, $error;
     }
-    DRA::logger("... done", $videoLogPath);
+    DRA::logger("... done", $projectLogPath);
 }
 
 # Check transfer of files to mdss
 &main::evaluateErrors;
 
 # Send directories to MDSS via htar
-DRA::logger("Sending directories via htar:", $videoLogPath);
+DRA::logger("Sending directories via htar:", $projectLogPath);
 foreach my $name (@videoDirs) {
     # Safety check: make sure we don't tranfer empty directories. We could
     # be accidentally tranferring a directory that already was
@@ -474,7 +497,7 @@ foreach my $name (@videoDirs) {
             }
         );
         if ($error) {
-            DRA::logger("Failed! Check MDSS error log", $videoLogPath);
+            DRA::logger("Failed! Check MDSS error log", $projectLogPath);
             push @errors, $htarMessage;
         }
         else {
@@ -482,7 +505,7 @@ foreach my $name (@videoDirs) {
                 = "Htar appeared to succeed. Removing placeholder file.\n"
                 . $htarMessage
                 . "\n";
-            DRA::logger($message, $videoLogPath);
+            DRA::logger($message, $projectLogPath);
             DRA::clearLog($errorLogPath);
         }
     }
@@ -491,16 +514,19 @@ foreach my $name (@videoDirs) {
             = "Directory $name is empty indicating that it was "
             . "probably transferred at an earlier time. HTAR will "
             . "not archive its contents";
-        DRA::logger($message, $videoLogPath);
+        DRA::logger($message, $projectLogPath);
     }
 }
 
 # Check transfer of directories to mdss
 &main::evaluateErrors;
 
-DRA::logger("dra-video finished.", $videoLogPath);
-
-# end main
+# Close up shop
+DRA::logger("dra-video finished.", $projectLogPath);
+DRA::logger(
+    "All file transfers complete. See local project log for details.",
+    $videoLogPath
+);
 
 
 # ----------------------------------------------------------------------------
@@ -526,22 +552,22 @@ sub sendFiles {
     
     my $src = Path::Class::File->new($srcDir, $file);
     # Create MD5 sum
-    DRA::logger("Creating MD5 sum for $file ...", $videoLogPath);
+    DRA::logger("Creating MD5 sum for $file ...", $projectLogPath);
     my ($md5file, $error) = DRA::createMD5($src, $file);
     if ($error) {
-        DRA::logger("Failed!", $videoLogPath);
+        DRA::logger("Failed!", $projectLogPath);
         my $message = "MD5 creation failed: $error";
         push @errors, $message;
     }
     else {
-        DRA::logger("done.", $videoLogPath);
+        DRA::logger("done.", $projectLogPath);
     }
 
     # Send MD5 sum to MDSS
     my $md5src  = $file . ".md5";
     my $md5path = Path::Class::File->new($srcDir, $md5src);
     my $md5dest = Path::Class::File->new($remoteSrcDir, $md5src);
-    DRA::logger("Sending MD5 file $md5src ...", $videoLogPath);
+    DRA::logger("Sending MD5 file $md5src ...", $projectLogPath);
     my $put_err1 = DRA::hsiPut(
         {
         source => $md5path,
@@ -553,17 +579,17 @@ sub sendFiles {
         }
     );
     if ($put_err1) {
-        DRA::logger("Failed!", $videoLogPath);
+        DRA::logger("Failed!", $projectLogPath);
         my $message = "Failed to send file: $!";
         push @errors, $message;
     }
     else {
-        DRA::logger("done.", $videoLogPath);
+        DRA::logger("done.", $projectLogPath);
     }
         
     # Send file to MDSS
     my $dest = Path::Class::File->new($remoteSrcDir, $file);
-    DRA::logger("Sending $file ...", $videoLogPath);
+    DRA::logger("Sending $file ...", $projectLogPath);
     my $put_err2 = DRA::hsiPut(
         {
         source => $src,
@@ -575,16 +601,16 @@ sub sendFiles {
         }
     );
     if ($put_err2) {
-        DRA::logger("Failed!", $videoLogPath);
+        DRA::logger("Failed!", $projectLogPath);
         my $message = "Failed to send file: $!";
         push @errors, $message;
     }
     else {
-        DRA::logger("done.", $videoLogPath);
+        DRA::logger("done.", $projectLogPath);
     }
         
     # Check transfer
-    DRA::logger("Verifying ...", $videoLogPath);
+    DRA::logger("Verifying ...", $projectLogPath);
     my $check_err = DRA::hsiCheck(
         {
         file   => $file,
@@ -597,12 +623,12 @@ sub sendFiles {
         }
     );
     if ($check_err) {
-        DRA::logger("Failed!", $videoLogPath);
+        DRA::logger("Failed!", $projectLogPath);
         my $message = "Verification failed: $!";
         push @errors, $message;
     }
     else {
-        DRA::logger("Passed!", $videoLogPath);
+        DRA::logger("Passed!", $projectLogPath);
     }
 
     # Return any errors
