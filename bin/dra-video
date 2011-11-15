@@ -402,9 +402,9 @@ foreach my $dvd (@dvdFiles) {
         }
         else {
             my $message
-                = "sums differ - check failed";
-            # TODO: need to delete the remote file
-            # otherwise the script will continue next time
+                = "sums differ - check failed. Removing remote file";
+            my $removeDvd = "rm -f $remoteDvd";
+            main:remoteCommand($removeDvd);
             DRA::logger($message, $projectLogPath);
             push @errors, $message;
         }
@@ -417,6 +417,8 @@ foreach my $dvd (@dvdFiles) {
 
 # If it gets this far, it's time to send the files to mdss
 # Send individual files to mdss via hsi and folders via htar
+# Grab a new list of files since they've been renamed
+@videoContents = DRA::readDirectory($projectDir);
 my @videoFiles;
 my @videoDirs;
 foreach my $name (@videoContents) {
