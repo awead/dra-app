@@ -623,11 +623,11 @@ sub checkDirectoryContents {
 
 sub checkVideoDirectoryContents {
 
-    my $dir   = shift;
-    my $varId = shift;
+    my $dir      = shift;
+    my $varId    = shift;
+    my $typeList = shift;
     my @errors;
 
-    my $typeList = "accessDVD preservationProRes422 preservationVideo";
 
     my @files = DRA::readDirectory($dir);
     foreach my $file (@files) {
