@@ -70,6 +70,7 @@ $config->define( "videoDirs=s" );
 $config->define( "videoErrorLog=s" );
 $config->define( "videoTransLog=s" );
 $config->define( "videoLog=s" );
+$config->define( "videoTypeList=s" );
 
 # Command line switches
 $config->define("f!");
@@ -109,6 +110,7 @@ my $htarOptLine        = $config->get( "htarOpts"      );
 my $htarUser           = $config->get( "htarUser"      );
 my $keytab             = $config->get( "keytab"        );
 my $tempDir            = $config->get( "tempDir"       );
+my $videoTypeList      = $config->get( "videoTypeList" );
 
 # Initialize command line switches
 my $force        = $config->get("f");
@@ -195,14 +197,19 @@ if ($errMsg) {
     push @errors, $errMsg;
 }
 
+&main::evaluateErrors;
+DRA::logger( "OK", $videoLogPath );
+
 DRA::logger( "Checking file names ...", $videoLogPath );
 # Check project directory contents
-my $pderr = DRA::checkVideoDirectoryContents($projectDir, $varID);
+my $pderr 
+    = DRA::checkVideoDirectoryContents($projectDir, $varID, $videoTypeList);
 if ($pderr) {
     push @errors, $pderr;
 }
 
 &main::evaluateErrors;
+DRA::logger( "OK", $videoLogPath );
 
 # Build paths to remote files on DRA server
 my $remoteProjectDir = Path::Class::Dir->new($audioDir, $semester, $datedDir);
