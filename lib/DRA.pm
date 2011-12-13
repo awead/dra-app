@@ -150,7 +150,7 @@ sub clearLog {
 
     my $log = shift;
     if (-e $log) {
-        system("rm -f $log") == 0 or die "I can't remove the file $log";
+        system("rm -f '$log'") == 0 or die "I can't remove the file $log";
     }
     return 0;
 
