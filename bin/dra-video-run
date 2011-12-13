@@ -1,0 +1,256 @@
+#!/usr/bin/perl -w
+# ----------------------------------------------------------------------------
+# Name:  dra-video-run
+# Desc:  Processes a set of project directories
+# Args:  none
+#
+# Adam Wead
+# Jacobs School of Music
+# Indiana University
+# ----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+#
+# Setup libraries and packages
+#
+# ----------------------------------------------------------------------------
+
+# We have to have an environment variable telling us where the app is
+if ( !$ENV{DRA_HOME} ) {
+    die "DRA_HOME not set\n";
+}
+
+use lib "$ENV{DRA_HOME}/lib";
+use DRA;
+use strict;
+use AppConfig;
+use Path::Class;
+use IO::CaptureOutput qw(capture qxx qxy);
+use Carp;
+use Storable;
+
+# ----------------------------------------------------------------------------
+#
+# Define application-wide variables
+#
+# ----------------------------------------------------------------------------
+
+my $config = AppConfig->new( {
+    ERROR    => \&main::error,
+    PEDANTIC => 1,
+} );
+
+# Define all video.conf variables
+$config->define( "audioDir=s" );
+$config->define( "conversionErrorLog=s" );
+$config->define( "conversionLog=s" );
+$config->define( "copiedLog=s" );
+$config->define( "draKey=s" );
+$config->define( "draServer=s" );
+$config->define( "draUser=s" );
+$config->define( "errorLog=s" );
+$config->define( "hallList=s" );
+$config->define( "hsi=s" );
+$config->define( "hsiOpts=s" );
+$config->define( "hsiPorts=s" );
+$config->define( "htar=s" );
+$config->define( "htarOpts=s" );
+$config->define( "htarUser=s" );
+$config->define( "keytab=s" );
+$config->define( "logDir=s" );
+$config->define( "mdssErrorLog=s" );
+$config->define( "mdssLog=s" );
+$config->define( "remoteBlock=s" );
+$config->define( "rsyncLog=s" );
+$config->define( "semester=s" );
+$config->define( "sentToBeBurnedLog=s" );
+$config->define( "sshOpts=s" );
+$config->define( "tempDir=s" );
+$config->define( "videoDirs=s" );
+$config->define( "videoErrorLog=s" );
+$config->define( "videoTransLog=s" );
+$config->define( "videoLog=s" );
+$config->define( "videoTypeList=s" );
+
+# Command line switches
+$config->define("f!");
+$config->define("help!");
+
+# Read in variables from our config file and override any options passed from
+# the comand line
+my $confFile = Path::Class::File->new( $ENV{DRA_HOME}, "conf", "video.conf" );
+if ( !-e $confFile ) {
+    die "video.conf config file not found!";
+}
+$config->file("$confFile");
+$config->args();
+
+# Initialize only the variables we'll be using here
+my $draServer          = $config->get( "draServer"     );
+my $draUser            = $config->get( "draUser"       );
+my $draKey             = $config->get( "draKey"        );
+my $audioDir           = $config->get( "audioDir"      );
+my $semester           = $config->get( "semester"      );
+my $remoteBlockList    = $config->get( "remoteBlock"   );
+my $remoteErrorLog     = $config->get( "errorLog"      );
+my $remoteTransferLog  = $config->get( "copiedLog"     );
+my $remoteMdssLog      = $config->get( "mdssLog"       );
+my $remoteMdssErrorLog = $config->get( "mdssErrorLog"  );
+my $videoLog           = $config->get( "videoLog"      );
+my $videoErrorLog      = $config->get( "videoErrorLog" );
+my $videoTransLog      = $config->get( "videoTransLog" );
+my $logDir             = $config->get( "logDir"        );
+my $hallList           = $config->get( "hallList"      );
+my $sshOpts            = $config->get( "sshOpts"       );
+my $hsi                = $config->get( "hsi"           );
+my $hsiOptLine         = $config->get( "hsiOpts"       );
+my $hsiPorts           = $config->get( "hsiPorts"      );
+my $htar               = $config->get( "htar"          );
+my $htarOptLine        = $config->get( "htarOpts"      );
+my $htarUser           = $config->get( "htarUser"      );
+my $keytab             = $config->get( "keytab"        );
+my $tempDir            = $config->get( "tempDir"       );
+my $videoDirs          = $config->get( "videoDirs"     );
+
+# Initialize command line switches
+my $force        = $config->get("f");
+
+# Show help
+if ( $config->get("help") ) {
+    main::help();
+    exit 0;
+}
+
+# Check our local block list
+#my $run = DRA::checkBlocks($blockList);
+#if ($run) {
+#    croak($run);
+#}
+
+
+# ----------------------------------------------------------------------------
+#
+# Do some stuff
+#
+# ----------------------------------------------------------------------------
+
+my @errors;
+
+# Gather list of directories
+my @sourceDirs;
+my @sources = split / /, $videoDirs;
+foreach my $source (@sources) {
+
+    my @dirs = DRA::readDirectory($source);
+    push @sourceDirs, @dirs;
+
+}
+
+# Run dra-video on a set of directories
+
+# Report any errors to stdout
+
+
+
+
+# ----------------------------------------------------------------------------
+#
+# Subroutines
+#
+# ----------------------------------------------------------------------------
+
+# -------------------------------------------------------------------
+# Name: error, help
+# Desc: Just an error and help routine...nothing to see here...
+#       move along...
+# -------------------------------------------------------------------
+
+sub error {
+    my $message = shift;
+
+    if ($message) {
+        print $message . "\n";
+    }
+    else {
+        print "Invalid option\n";
+        &main::help;
+    }
+    
+    exit 1;
+}
+
+sub help {
+    print "Usage: dra-video-run [-help] [-f] [video.conf options] \n";
+}
+
+
+__END__
+
+=head1 DRA-VIDEO-RUN
+
+dra-video - Transfers video files to local server and MDSS
+
+=head1 VERSION
+
+This documentation refers to dra-video version 2.1.
+
+=head1 USAGE
+
+B<dra-video [-help] [-f] [video.conf options] [project_directory]>
+
+=head1 REQUIRED ARGUMENTS
+
+A B<project directory> is required for the script to run. This must be the full
+path the directory.  For example:
+
+B<dra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234>
+
+=head1 OPTIONS
+
+B<-help> Displays brief synopsis of usage.
+
+B<-f> Force flag.  The project will be transferred regardless of any errors 
+or if the concert was successfully sent at an earlier time.
+ 
+B<video.conf> Any setting from the video.conf file may be passed to the script at runtime in the format:
+
+-[variable name] [value]
+
+Example:
+
+B<dra-video -email joebob@indiana.edu [directory]>
+
+Will execute the script overriding the email address specified in video.conf with joebob@indiana.edu
+
+=head1 DESCRIPTION
+
+
+=head1 DIAGNOSTICS
+
+
+=head1 CONFIGURATION AND ENVIRONMENT
+
+A properly configured video.conf file should be sufficient for dra-video
+script to run.
+
+The DRA_HOME environment variable is required and can be set on a per-user basis
+or at execution time.
+
+=head1 DEPENDENCIES
+
+HTAR and HSI are required to send the files to MDSS.  These applications are
+available through IU's mass datastore service.  See http://kb.iu.edu/data/auvo.html
+for the latest client builds available.
+
+You will also need to create kerberos keytab files to enable automate access to the mdss account.
+For more information on creating keytab files, see http://kb.iu.edu/data/avdb.html.
+
+=head1 AUTHOR
+
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
+
+=head1 LICENCE AND COPYRIGHT
+
+Copyright 2011, the Trustees of Indiana University.
+
+=cut
