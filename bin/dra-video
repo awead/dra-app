@@ -71,6 +71,7 @@ $config->define( "videoErrorLog=s" );
 $config->define( "videoTransLog=s" );
 $config->define( "videoLog=s" );
 $config->define( "videoTypeList=s" );
+$config->define( "localBlock=s" );
 
 # Command line switches
 $config->define("f!");
