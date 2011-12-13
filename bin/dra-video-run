@@ -61,6 +61,7 @@ $config->define( "logDir=s" );
 $config->define( "mdssErrorLog=s" );
 $config->define( "mdssLog=s" );
 $config->define( "remoteBlock=s" );
+$config->define( "localBlock=s" );
 $config->define( "rsyncLog=s" );
 $config->define( "semester=s" );
 $config->define( "sentToBeBurnedLog=s" );
@@ -86,31 +87,10 @@ $config->file("$confFile");
 $config->args();
 
 # Initialize only the variables we'll be using here
-my $draServer          = $config->get( "draServer"     );
-my $draUser            = $config->get( "draUser"       );
-my $draKey             = $config->get( "draKey"        );
-my $audioDir           = $config->get( "audioDir"      );
-my $semester           = $config->get( "semester"      );
-my $remoteBlockList    = $config->get( "remoteBlock"   );
-my $remoteErrorLog     = $config->get( "errorLog"      );
-my $remoteTransferLog  = $config->get( "copiedLog"     );
-my $remoteMdssLog      = $config->get( "mdssLog"       );
-my $remoteMdssErrorLog = $config->get( "mdssErrorLog"  );
 my $videoLog           = $config->get( "videoLog"      );
-my $videoErrorLog      = $config->get( "videoErrorLog" );
-my $videoTransLog      = $config->get( "videoTransLog" );
 my $logDir             = $config->get( "logDir"        );
-my $hallList           = $config->get( "hallList"      );
-my $sshOpts            = $config->get( "sshOpts"       );
-my $hsi                = $config->get( "hsi"           );
-my $hsiOptLine         = $config->get( "hsiOpts"       );
-my $hsiPorts           = $config->get( "hsiPorts"      );
-my $htar               = $config->get( "htar"          );
-my $htarOptLine        = $config->get( "htarOpts"      );
-my $htarUser           = $config->get( "htarUser"      );
-my $keytab             = $config->get( "keytab"        );
-my $tempDir            = $config->get( "tempDir"       );
 my $videoDirs          = $config->get( "videoDirs"     );
+my $blockList          = $config->get( "localBlock"    );
 
 # Initialize command line switches
 my $force        = $config->get("f");
@@ -122,11 +102,10 @@ if ( $config->get("help") ) {
 }
 
 # Check our local block list
-#my $run = DRA::checkBlocks($blockList);
-#if ($run) {
-#    croak($run);
-#}
-
+my $run = DRA::checkBlocks($blockList);
+if ($run) {
+    croak($run);
+}
 
 # ----------------------------------------------------------------------------
 #
@@ -134,23 +113,64 @@ if ( $config->get("help") ) {
 #
 # ----------------------------------------------------------------------------
 
-my @errors;
+my $bin      = Path::Class::Dir->new( $ENV{DRA_HOME}, "bin" );
+my $logFile  = Path::Class::File->new( $logDir, $videoLog );
+
+my %errors;
+
+DRA::logger("dra-video-run starting...", $logFile);
 
 # Gather list of directories
 my @sourceDirs;
 my @sources = split / /, $videoDirs;
 foreach my $source (@sources) {
-
     my @dirs = DRA::readDirectory($source);
-    push @sourceDirs, @dirs;
-
+    foreach my $dir (@dirs) {
+        if ( $dir =~ /^20/ and $dir =~ /^\d{8,8}/) {
+            my $path = Path::Class::Dir->new($source, $dir);
+            push @sourceDirs, $path;
+        }
+    }
 }
 
 # Run dra-video on a set of directories
+foreach my $projectDir (@sourceDirs) {
+    DRA::logger("Processing video project -- $projectDir", $logFile);
+
+    my $transferCommand = Path::Class::File->new( $bin, "dra-video" );
+    my ($t_out, $t_err, $t_success, $t_exit_code) =
+        IO::CaptureOutput::capture_exec($transferCommand, $projectDir);
+
+    if ( $t_err or $t_out ) {
+        DRA::logger("...script FAILED. Skipping to next folder", $logFile);
+        my $message
+            = "dra-video output: " . $t_out . "\n\n"
+            . "dra-video errors: " . $t_err . "\n\n"
+            ;
+        $errors{$projectDir} = $message;
+        next;
+    }
+    else {
+        DRA::logger("...ok", $logFile);;
+    }
+
+}
 
 # Report any errors to stdout
+if (%errors) {
 
+    DRA::logger("DRA video run complete, but with errors", $logFile);
+    print "dra-video-run finished with the following errors:\n\n";
+    
+    foreach my $error ( keys %errors ) {
+        print $error . ":\n" . $errors{$error};
+    }
+}
+else {
+    DRA::logger("DRA video run complete with no errors.", $logFile);
+}
 
+exit 0;
 
 
 # ----------------------------------------------------------------------------
