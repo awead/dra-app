@@ -377,6 +377,7 @@ DRA::logger("Sending files to DRA server and MDSS...", $videoLogPath);
 DRA::logger("Copying DVD files to remote DRA server", $projectLogPath);
 my @dvdFiles = DRA::readDirectory($projectDir, "img");
 foreach my $dvd (@dvdFiles) {
+
     my $remoteDvd 
         = Path::Class::File->new($remoteProjectDir, "access", $dvd);
     if (main::remoteFileExists($dvd) and !$force) {
@@ -384,6 +385,10 @@ foreach my $dvd (@dvdFiles) {
         DRA::logger($message, $projectLogPath);
     }
     else {
+
+        # Use placeholder file to catch interrupted transfers
+        my $placeHolder = "PLACEHOLDER: sending file via scp";
+        DRA::logger($placeHolder, $errorLogPath);
 
         my $source = Path::Class::File->new($projectDir, $dvd);
         my $err = DRA::sendSCP(
@@ -433,6 +438,9 @@ foreach my $dvd (@dvdFiles) {
             DRA::logger($message, $projectLogPath);
             push @errors, $message;
         }
+
+        DRA::logger("... done, removing placholder file", $projectLogPath);
+        DRA::clearLog($errorLogPath);
        
     }
 }
@@ -461,12 +469,18 @@ foreach my $name (@videoContents) {
 DRA::logger("Sending individual files to MDSS:", $projectLogPath);
 my $remoteMdssDir = Path::Class::Dir->new($semester, $datedDir);
 foreach my $file (@videoFiles) {
-    DRA::logger("... $file", $projectLogPath);
+
+    # Assume hsi will fail -- this catches incomplete transfers
+    my $placeHolder = "PLACEHOLDER: sending file via hsi";
+    DRA::logger($placeHolder, $errorLogPath);
+
+    DRA::logger("... sending via hsi: $file", $projectLogPath);
     my $error = main::sendFiles($projectDir, $remoteMdssDir, $file);
     if ($error) {
         push @errors, $error;
     }
-    DRA::logger("... done", $projectLogPath);
+    DRA::logger("... done, removing placholder file", $projectLogPath);
+    DRA::clearLog($errorLogPath);
 }
 
 # Check transfer of files to mdss
@@ -490,7 +504,8 @@ foreach my $name (@videoDirs) {
         my $placeHolder = "PLACEHOLDER: running htar send";
         DRA::logger($placeHolder, $errorLogPath);
     
-        my $remotePath = Path::Class::File->new($remoteMdssDir, $name);
+        my $remoteName = $name . ".tar";
+        my $remotePath = Path::Class::File->new($remoteMdssDir, $remoteName);
         my ($error, $htarMessage) = DRA::htarSend(
             {
             src       => $name,
