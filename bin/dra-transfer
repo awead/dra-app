@@ -318,8 +318,9 @@ if ( -e $videoDir) {
             = "The video list was not found, meaning that we're still "
             . "waiting for the file list to be sent over from from the "
             . "video work station. Once we have it, this script can proceed.";
-        DRA::logger( $message, $logFile );
-        exit 0;
+        DRA::logger( "Video list not found, aborting transfer", $logFile );
+        DRA::logger( $message, $errorLogPath );
+        croak(qq{$message\n});
     }
 }
 else {

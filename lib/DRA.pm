@@ -676,7 +676,9 @@ sub checkSubdirectories {
         if ( -d $path ) {
             
             my @parts = split /_/, $item;
-            if ( (scalar @parts == 1) and ($item !~ /access/) ) {
+            if (     (scalar @parts == 1) 
+                 and (($item !~ /access/) or ($item !~ /video/)) )
+            {
                 my $message = "$item - misnamed or incorrect separator (_)";
                 push @errors, $message;
             }
