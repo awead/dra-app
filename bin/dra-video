@@ -149,7 +149,7 @@ my $localAccessDir   = Path::Class::Dir->new($projectDir, "access" );
 my $projectLogDir    = Path::Class::Dir->new($projectDir, "access", "logs" );
 
 my $sshKeyPath       = Path::Class::File->new($ENV{DRA_HOME}, "conf", $draKey);
-my $projectLogPath   = Path::Class::File->new($projectLogDir, $videoLog );
+my $projectLogPath   = Path::Class::File->new($projectLogDir, $videoTransLog );
 my $errorLogPath     = Path::Class::File->new($projectLogDir, $videoErrorLog );
 my $videoLogPath     = Path::Class::File->new($logDir, $videoLog);
 
@@ -381,69 +381,63 @@ foreach my $dvd (@dvdFiles) {
 
     my $remoteDvd
         = Path::Class::File->new($remoteProjectDir, "access", $dvd);
-    if (main::remoteFileExists($dvd) and !$force) {
-        my $message = "$dvd has already been transfered";
+
+    # Use placeholder file to catch interrupted transfers
+    my $placeHolder = "PLACEHOLDER: sending file via scp";
+    DRA::logger($placeHolder, $errorLogPath);
+
+    my $source = Path::Class::File->new($projectDir, $dvd);
+    my $err = DRA::sendSCP(
+        {
+            user   => $draUser,
+            key    => $sshKeyPath,
+            opts   => $sshOpts,
+            source => $source,
+            dest   => $remoteDvd,
+            host   => $draServer,
+        }
+    );
+
+    if ($err) {
+        DRA::logger( 
+            "DVD file copy failed -- see error log",
+            $projectLogPath 
+        );
+        push @errors, $err;
+    }
+
+    DRA::logger("Computing md5 sums", $projectLogPath);
+    my ($md5, $md5err) = DRA::createMD5($source,$dvd);
+    if ($md5err) {
+        DRA::logger( 
+            "MD5 creation failed -- see error log",
+            $projectLogPath 
+        );
+        push @errors, $md5err;
+    }
+
+    DRA::logger("Checking md5 sums for $dvd ...", $projectLogPath);
+    my $md5Path = Path::Class::File->new($projectDir, $md5);
+    my $md5sum = DRA::getMD5($md5Path);
+    my $remoteMd5Command = "md5 -q " . $remoteDvd;
+    my $remoteMd5 = main::remoteCommand($remoteMd5Command);
+    if ($md5sum eq $remoteMd5) {
+        my $message
+            = "sums are the same - check passed";
         DRA::logger($message, $projectLogPath);
     }
     else {
-
-        # Use placeholder file to catch interrupted transfers
-        my $placeHolder = "PLACEHOLDER: sending file via scp";
-        DRA::logger($placeHolder, $errorLogPath);
-
-        my $source = Path::Class::File->new($projectDir, $dvd);
-        my $err = DRA::sendSCP(
-            {
-                user   => $draUser,
-                key    => $sshKeyPath,
-                opts   => $sshOpts,
-                source => $source,
-                dest   => $remoteDvd,
-                host   => $draServer,
-            }
-        );
-
-        if ($err) {
-            DRA::logger(
-                "DVD file copy failed -- see error log",
-                $projectLogPath
-            );
-            push @errors, $err;
-        }
-
-        DRA::logger("Computing md5 sums", $projectLogPath);
-        my ($md5, $md5err) = DRA::createMD5($source,$dvd);
-        if ($md5err) {
-            DRA::logger(
-                "MD5 creation failed -- see error log",
-                $projectLogPath
-            );
-            push @errors, $md5err;
-        }
-
-        DRA::logger("Checking md5 sums for $dvd ...", $projectLogPath);
-        my $md5Path = Path::Class::File->new($projectDir, $md5);
-        my $md5sum = DRA::getMD5($md5Path);
-        my $remoteMd5Command = "md5 -q " . $remoteDvd;
-        my $remoteMd5 = main::remoteCommand($remoteMd5Command);
-        if ($md5sum eq $remoteMd5) {
-            my $message
-                = "sums are the same - check passed";
-            DRA::logger($message, $projectLogPath);
-        }
-        else {
-            my $message
-                = "sums differ - check failed. Removing remote file";
-            my $removeDvd = "rm -f $remoteDvd";
-            main:remoteCommand($removeDvd);
-            DRA::logger($message, $projectLogPath);
-            push @errors, $message;
-        }
-
-        DRA::logger("... done, removing placholder file", $projectLogPath);
-        DRA::clearLog($errorLogPath);
-
+        my $message
+            = "sums differ - check failed. Removing remote file";
+        my $removeDvd = "rm -f $remoteDvd";
+        main:remoteCommand($removeDvd);
+        DRA::logger($message, $projectLogPath);
+        push @errors, $message;
     }
+
+    DRA::logger("... done, removing placholder file", $projectLogPath);
+    DRA::clearLog($errorLogPath);
+       
 }
 
 # Check transfer of DVD files to audio server
@@ -544,12 +538,36 @@ foreach my $name (@videoDirs) {
 # Check transfer of directories to mdss
 &main::evaluateErrors;
 
-# Close up shop
-DRA::logger("dra-video finished.", $projectLogPath);
+# Send copy of video.log to audio server
 DRA::logger(
-    "All file transfers complete. See local project log for details.",
+    "All file transfers complete, sending copy of video log to remote server",
     $videoLogPath
 );
+DRA::logger("dra-video finished.", $projectLogPath);
+my $remoteVideoLog = Path::Class::File->new($remoteLogDir, $videoTransLog);
+my $err = DRA::sendSCP(
+    {
+        user   => $draUser,
+        key    => $sshKeyPath,
+        opts   => $sshOpts,
+        source => $projectLogPath,
+        dest   => $remoteVideoLog,
+        host   => $draServer,
+    }
+);
+
+if ($err) {
+    DRA::logger( 
+        "Failed to copy video log to remote server",
+        $projectLogPath 
+    );
+    push @errors, $err;
+}
+
+&main::evaluateErrors;
+
+DRA::logger( "Done!", $videoLogPath);
+
 
 
 # ----------------------------------------------------------------------------
