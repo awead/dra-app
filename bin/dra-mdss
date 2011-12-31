@@ -176,13 +176,13 @@ if ( $config->get("help") ) {
 
 # Check input
 if (! $ARGV[0]) {
-    main::error("No folder specified"); 
+    main::error("No folder specified");
 }
 my $projectDir = Path::Class::Dir->new($ARGV[0]);
 if (! -d $projectDir) {
     main::error("Specified folder does not exist");
 }
-            
+
 # Check our block list
 my $run = DRA::checkBlocks($blockList);
 if ($run) {
@@ -203,7 +203,7 @@ my $logDir    = Path::Class::Dir->new($accessDir, "logs");
 
 
 # Build paths to necessary files
-my $logFile 
+my $logFile
     = Path::Class::File->new($scriptLog, $log);
 my $transferErrorLog
     = Path::Class::File->new($logDir, $transError);
@@ -213,16 +213,16 @@ my $mdssTransferLog
     = Path::Class::File->new($logDir, $mdssLog);
 my $transferLog
     = Path::Class::File->new($logDir, $transLog);
-my $keytabFile 
+my $keytabFile
     = Path::Class::File->new( $ENV{DRA_HOME}, "conf", $keytab );
 
 # Sanity checks:  make sure we have an access directory
-die "No log directory found, aborting! \n" 
+die "No log directory found, aborting! \n"
     if (! -d $logDir);
 
 # Start logging
 DRA::logger(
-    "MDSS script starting up, processing $projectDir", 
+    "MDSS script starting up, processing $projectDir",
     $logFile
 );
 
@@ -286,18 +286,18 @@ foreach my $pfile (@pfiles) {
     #  1. is in our exclude list
     #  2. is named access -- that's dealt with later
     #  3. has already been renamed
-    if (    ($exclude !~ /$pfile/) 
-        and ($pfile   !~ /^access$/) 
+    if (    ($exclude !~ /$pfile/)
+        and ($pfile   !~ /^access$/)
         and ($pfile   !~ /^$data->{'prefix'}/)
     ) {
-        
+
         my $path = Path::Class::Dir->new($projectDir, $pfile);
         my $newname
             = $data->{'prefix'}
             . "_"
             . $pfile
             ;
-        
+
         # Assume it's a directory...
         if (-d $path) {
             my $newPath = Path::Class::Dir->new($projectDir, $newname);
@@ -315,8 +315,8 @@ foreach my $pfile (@pfiles) {
 
     }
     else {
-        
-        my $message 
+
+        my $message
             = "Skipping $pfile : it's either already renamed, "
             . "excluded or being dealt with in the access folder";
         DRA::logger($message, $logFile);
@@ -332,8 +332,8 @@ foreach my $afile (@afiles) {
 
     # Assume files only in here
     my $path = Path::Class::File->new($accessDir, $afile);
-    if ((! -d $path) 
-        and ($exclude !~ /$afile/) 
+    if ((! -d $path)
+        and ($exclude !~ /$afile/)
         and ($afile   !~ /^$data->{'prefix'}/)
     ) {
         my $newname
@@ -347,8 +347,8 @@ foreach my $afile (@afiles) {
             or croak "Failed to rename $afile !\n";
     }
     else {
-        
-        my $message 
+
+        my $message
             = "Skipping $afile : it's either already renamed or excluded";
         DRA::logger($message, $logFile);
 
@@ -374,8 +374,8 @@ DRA::logger("Checking list of files from data file...", $logFile);
 foreach my $file (@{$data->{'preservation'}}) {
     my $path = Path::Class::File->new($projectDir, $file);
     if (! -e $path) {
-        my $message 
-            = "Preservation file [$file] not found. " 
+        my $message
+            = "Preservation file [$file] not found. "
             . "It's supposed to be here!";
         push @errors, $message;
     }
@@ -383,8 +383,8 @@ foreach my $file (@{$data->{'preservation'}}) {
 foreach my $file (@{$data->{'access'}}) {
     my $path = Path::Class::File->new($accessDir, $file);
     if (! -e $path) {
-        my $message 
-            = "Access file [$file] not found. " 
+        my $message
+            = "Access file [$file] not found. "
             . "It's supposed to be here!";
         push @errors, $message;
     }
@@ -439,7 +439,7 @@ foreach my $file (@{$data->{'preservation'}}) {
 }
 
 foreach my $file (@{$data->{'access'}}) {
-    
+
     # Only copy the wave files... the other stuff was copied from the
     # preservation directory
     if ($file =~ /wav$/) {
@@ -583,7 +583,7 @@ sub sendFiles {
 
     my ($srcDir, $remoteSrcDir, $file) = @_;
     my @errors;
-    
+
     my $src = Path::Class::File->new($srcDir, $file);
     # Create MD5 sum
     DRA::logger("Creating MD5 sum for $file ...", $mdssTransferLog);
@@ -620,7 +620,7 @@ sub sendFiles {
     else {
         DRA::logger("done.", $mdssTransferLog);
     }
-        
+
     # Send file to MDSS
     my $dest = Path::Class::File->new($remoteSrcDir, $file);
     DRA::logger("Sending $file ...", $mdssTransferLog);
@@ -642,7 +642,7 @@ sub sendFiles {
     else {
         DRA::logger("done.", $mdssTransferLog);
     }
-        
+
     # Check transfer
     DRA::logger("Verifying ...", $mdssTransferLog);
     my $check_err = DRA::hsiCheck(
@@ -692,7 +692,7 @@ sub error {
         print "Invalid option\n";
         &main::help;
     }
-    
+
     exit 1;
 }
 
@@ -708,7 +708,7 @@ dra-mdss - Transfers projects to IU's mass data storage facility
 
 =head1 VERSION
 
-This documentation refers to dra-mdss version 2.0.
+This documentation refers to dra-mdss version 2.1
 
 =head1 USAGE
 
@@ -716,8 +716,8 @@ B<dra-mdss [-help] [-f] [dra.conf options] [project_directory]>
 
 =head1 REQUIRED ARGUMENTS
 
-A B<project directory> is required for the script to run. This must be the full
-path the directory.  For example:
+A B<project directory> is required for the script to run. This must be the
+full path the directory.  For example:
 
 B<dra-mdss /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
@@ -725,10 +725,11 @@ B<dra-mdss /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
 B<-help> Displays brief synopsis of usage.
 
-B<-f> Force flag.  The project will be transferred to mdss regardless of any errors 
-or if the concert was successfully sent at an earlier time.
- 
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+B<-f> Force flag.  The project will be transferred to mdss regardless of any
+errors or if the concert was successfully sent at an earlier time.
+
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at
+runtime in the format:
 
 -[variable name] [value]
 
@@ -736,27 +737,30 @@ Example:
 
 B<dra-mdss -email joebob@indiana.edu [directory]>
 
-Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu
+Will execute the script overriding the email address specified in dra.conf
+with joebob@indiana.edu
 
 =head1 DESCRIPTION
 
-dra-mdss will take a project folder that had been successfully processed by the dra-transfer
-script and send it to the mdss storage facility for archiving. During this processes, files
-will be renamed and checksums will be computed and stored along with the original files to
-ensure accurate transfers in the future.
+dra-mdss will take a project folder that had been successfully processed by
+the dra-transfer script and send it to the mdss storage facility for
+archiving. During this processes, files will be renamed and checksums will be
+computed and stored along with the original files to ensure accurate transfers
+in the future.
 
-The script will continue to process a project directory until there is a successful
-outcome.  Once the project has been successfully sent to mdss, any further executions
-on that particular project directory will have no effect. Using the force option,
-(-f) will override this and re-send the project to mdss.
+The script will continue to process a project directory until there is a
+successful outcome.  Once the project has been successfully sent to mdss, any
+further executions on that particular project directory will have no effect.
+Using the force option, (-f) will override this and re-send the project to
+mdss.
 
 =head1 DIAGNOSTICS
 
 Upon successful execution, the dra-mdss with exit with no output. Any fatal
-error will be written to standard output and the application will exit immediately.
-Messages are written to the application's own log file found in the application
-log directory, as well as a separate log file found in the project's log
-directory in the access folder.
+error will be written to standard output and the application will exit
+immediately. Messages are written to the application's own log file found in
+the application log directory, as well as a separate log file found in the
+project's log directory in the access folder.
 
 In the case of errors written to standard out, the error will appear on the
 command line shell or will be collected by the calling script, usually
@@ -767,30 +771,31 @@ called either directly or by dra-run.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-A properly configured dra.conf file should be sufficient for dra-mdss
-script to run.
+A properly configured dra.conf file should be sufficient for dra-mdss script
+to run.
 
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.
 
 =head1 DEPENDENCIES
 
 HTAR and HSI are required to send the files to MDSS.  These applications are
-available through IU's mass datastore service.  See http://kb.iu.edu/data/auvo.html
-for the latest client builds available.
+available through IU's mass datastore service.  See
+http://kb.iu.edu/data/auvo.html for the latest client builds available.
 
-You will also need to create kerberos keytab files to enable automate access to the mdss account.
-For more information on creating keytab files, see http://kb.iu.edu/data/avdb.html.
+You will also need to create kerberos keytab files to enable automate access
+to the mdss account. For more information on creating keytab files, see
+http://kb.iu.edu/data/avdb.html.
 
 =head1 AUTHOR
 
 Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
-Travis Gregg  
+Travis Gregg
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

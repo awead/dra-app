@@ -217,7 +217,7 @@ if ($run) {
 
 # Check for mountpoint
 if (!-d $mpPath) {
-    system($mkdir, $mkdirArgs, $mpPath) == 0 
+    system($mkdir, $mkdirArgs, $mpPath) == 0
         or croak "Failed to create mount point $mpPath: $? \n";
 }
 
@@ -225,20 +225,20 @@ if (!-d $mpPath) {
 my $mountCheck = DRA::runCommand($mount);
 if ( $mountCheck =~ /$mpPath/ ) {
     DRA::logger("Mount in use, forcibly unmounting...", $logFile);
-    system($umount, $umountArgs, $mpPath) == 0 
+    system($umount, $umountArgs, $mpPath) == 0
         or croak "Failed to unmount $mpPath \n";
     DRA::logger("Unmounted", $logFile);
 }
 
 # Build connection string
-my $connString = "\"//" 
-               . $group 
-               . ";" 
-               . $user 
-               . ":" 
+my $connString = "\"//"
+               . $group
+               . ";"
+               . $user
+               . ":"
                . $pass
-               . "\@" 
-               . $share 
+               . "\@"
+               . $share
                . "\""
                ;
 
@@ -272,7 +272,7 @@ foreach my $remoteDir (@remoteDirs) {
 }
 
 if (! @localDirs ) {
-    my $message 
+    my $message
         = "No project directories found on the server for the share: "
         . $share;
     DRA::logger($message, $logFile);
@@ -286,8 +286,8 @@ foreach my $projectDir (@localDirs) {
     DRA::logger("Checking $projectDir on $share", $logFile);
     my $projectLogPath = Path::Class::Dir->new(
         $semesterPath,
-        $projectDir, 
-        "access", 
+        $projectDir,
+        "access",
         "logs"
     );
 
@@ -333,7 +333,7 @@ foreach my $projectDir (@localDirs) {
 
     }
     elsif ($age < 24) {
-        
+
         my $message
             = "...project is complete, but one of "
             . "the log files is only $age "
@@ -341,7 +341,7 @@ foreach my $projectDir (@localDirs) {
             . "day before we delete anything.";
         DRA::logger($message, $logFile);
 
-    }    
+    }
     else {
 
         DRA::logger("... project checks out. We can delete it", $logFile);
@@ -363,7 +363,7 @@ foreach my $projectDir (@localDirs) {
 
 # Unmount share and exit
 DRA::logger("Delete script complete, unmounting share", $logFile);
-system($umount, $umountArgs, $mpPath) == 0 
+system($umount, $umountArgs, $mpPath) == 0
     or croak "Failed to unmount $mpPath \n";
 DRA::logger("Exiting.", $logFile);
 exit 0;
@@ -407,13 +407,13 @@ sub help {
 # -------------------------------------------------------------------
 
 sub myCroak {
-    
+
     my $message = shift;
 
     DRA::logger("Script failed; unmounting share", $logFile);
-    system($umount, $umountArgs, $mpPath) == 0 
+    system($umount, $umountArgs, $mpPath) == 0
         or croak "Failed to unmount $mpPath \n";
-    
+
     croak $message;
 
 }
@@ -428,7 +428,7 @@ dra-delete - removes completed audio projects from their remote stations
 
 =head1 VERSION
 
-This documentation refers to dra-delete version 2.0
+This documentation refers to dra-delete version 2.1
 
 =head1 USAGE
 
@@ -438,7 +438,8 @@ B<dra-delete [-help] [dra.conf options]>
 
 B<-help> Displays brief synopsis of usage.
 
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at
+runtime in the format:
 
 -[variable name] [value]
 
@@ -463,40 +464,39 @@ The username that as acces to the specified share on the hosting computer.
 
 B<-smbPass>
 
-The password for the above user. Note: if the password is given in a script, it
-will be readable.
+The password for the above user. Note: if the password is given in a script,
+it will be readable.
 
 B<-share>
 
-The fully-qualified domain name of the computer hosting the samba share and the
-name of the share.  Format should be: [computer_name]/[share_name].  See above
-examples.
+The fully-qualified domain name of the computer hosting the samba share and
+the name of the share.  Format should be: [computer_name]/[share_name].  See
+above examples.
 
 =head1 DESCRIPTION
 
 Similar to the dra-backup script, dra-delete access remote recording stations
 except to remove complete project files.
 
-The dra-delete script compares any project directories on a remote station
-to directories found locally on the server. If a project has finished
-processing without any errors, the script will remove the project from
-the remote station as well as from the backup folder on the local
-server.
+The dra-delete script compares any project directories on a remote station to
+directories found locally on the server. If a project has finished processing
+without any errors, the script will remove the project from the remote station
+as well as from the backup folder on the local server.
 
-A project is considered finished when all four project logs exist:
-copied log, conversion log, burned log and mdss log; and there
-are no error logs.
+A project is considered finished when all four project logs exist: copied log,
+conversion log, burned log and mdss log; and there are no error logs.
 
 =head1 DIAGNOSTICS
 
 Upon successful execution, the application with exit with no output. Any fatal
-error will be written to standard output and the application ceases immediately.
+error will be written to standard output and the application ceases
+immediately.
 
-The most common failures would be: 1) the presence of any blocking processes as
-listed in the dra.conf file, 2) an unavailable mount point on the client
-machine, 3) an unavailable share on the remote station, 4) incorrect credentials
-for accessing the samba share on the host computer, and 5) absence of the
-DRA_HOME environment variable.
+The most common failures would be: 1) the presence of any blocking processes
+as listed in the dra.conf file, 2) an unavailable mount point on the client
+machine, 3) an unavailable share on the remote station, 4) incorrect
+credentials for accessing the samba share on the host computer, and 5) absence
+of the DRA_HOME environment variable.
 
 Detailed information about other non-fatal errors will be found in the
 application log under the log directory.
@@ -508,11 +508,11 @@ options need to be specified such as different remote shares, groups, and/or
 users and passwords.
 
 A default username and password can be specified in the dra.conf file and then
-overridden at execution time with the appropriate switch passed via the command
-line.
+overridden at execution time with the appropriate switch passed via the
+command line.
 
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.  For example:
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.  For example:
 
 B<DRA_HOME=/usr/local/audio dra-delete [options]>
 
@@ -527,7 +527,7 @@ Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

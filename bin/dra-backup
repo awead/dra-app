@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # ----------------------------------------------------------------------------
-# Name:  dra-backup 
+# Name:  dra-backup
 # Desc:  Logs into any DRA recording station and pulls files for processing
 #
 # Adam Wead
@@ -176,13 +176,13 @@ my $hallList      = $config->get( "hallList"        );
 my $appUser       = $config->get( "appUser"         );
 my $appGroup      = $config->get( "appGroup"        );
 
-my $videoMACVolume 
+my $videoMACVolume
     = $config->get( "videoMACVolume" );
-my $videoMACMountPoint 
+my $videoMACMountPoint
     = $config->get( "videoMACMountPoint" );
-my $interestedAccessVideoExts 
+my $interestedAccessVideoExts
     = $config->get( "interestedAccessVideoExts" );
-my $interestedPreservVideoExts 
+my $interestedPreservVideoExts
     = $config->get( "interestedPreservVideoExts" );
 
 # Show help
@@ -210,7 +210,7 @@ if ($run) {
 # Check for mountpoint
 my $mpPath = Path::Class::Dir->new($mountPoint);
 if (!-d $mpPath) {
-    system($mkdir, $mkdirArgs, $mpPath) == 0 
+    system($mkdir, $mkdirArgs, $mpPath) == 0
         or croak "Failed to create mount point $mpPath: $? \n";
 }
 
@@ -218,20 +218,20 @@ if (!-d $mpPath) {
 my $mountCheck = DRA::runCommand($mount);
 if ( $mountCheck =~ /$mpPath/ ) {
     DRA::logger("Mount in use, forcibly unmounting...", $logFile);
-    system($umount, $umountArgs, $mpPath) == 0 
+    system($umount, $umountArgs, $mpPath) == 0
         or croak "Failed to unmount $mpPath \n";
     DRA::logger("Unmounted", $logFile);
 }
 
 # Build connection string
-my $connString = "\"//" 
-               . $group 
-               . ";" 
-               . $user 
-               . ":" 
+my $connString = "\"//"
+               . $group
+               . ";"
+               . $user
+               . ":"
                . $pass
-               . "\@" 
-               . $share 
+               . "\@"
+               . $share
                . "\""
                ;
 
@@ -263,7 +263,7 @@ DRA::logger("Backup sync complete - rsync reported: $output", $logFile);
 
 # Change mode on backup files
 DRA::logger("Changing mode on backup files", $logFile);
-system($chmod, $chmodArgs, $chmodMode, $backupDir) == 0 
+system($chmod, $chmodArgs, $chmodMode, $backupDir) == 0
     or croak "Mode change failed for $backupDir : $@ \n";
 
 # Transfer files from the remote station
@@ -271,7 +271,7 @@ DRA::logger("Reading all directories under $mpPath", $logFile);
 my @dirs = DRA::readDirectory($mpPath);
 my @errors;
 foreach my $dir (@dirs) {
-    
+
     DRA::logger("Checking remote folder $dir ...", $logFile);
     my $accessDir = Path::Class::Dir->new($mpPath, $dir, "access");
     if ( (-d $accessDir) and ($dir =~ m/^2/) ) {
@@ -283,7 +283,7 @@ foreach my $dir (@dirs) {
             push @errors, $errMsg;
         }
         else {
-    
+
             DRA::logger(
                 "Directory name checks out, transferring files",
                 $logFile
@@ -302,7 +302,7 @@ foreach my $dir (@dirs) {
 
 # Clean up and evaluate errors
 DRA::logger("Backup script complete, unmounting share", $logFile);
-system($umount, $umountArgs, $mpPath) == 0 
+system($umount, $umountArgs, $mpPath) == 0
     or croak "Failed to unmount $mpPath \n";
 
 if (@errors) {
@@ -330,7 +330,7 @@ else {
 
 # -------------------------------------------------------------------
 # Name:   transferFiles
-# Desc:   Transfers files from remote station to the 
+# Desc:   Transfers files from remote station to the
 #         concert directory
 # Input:  remoteProjectDir
 # Output: message
@@ -339,36 +339,36 @@ sub transferFiles {
 
     my $datedRemoteDir = shift;
     my $message;
-    
-    my $remoteProjectDir 
+
+    my $remoteProjectDir
         = Path::Class::Dir->new($mpPath, $datedRemoteDir);
-    my $projectDir 
+    my $projectDir
         = Path::Class::Dir->new($audioDir, $semester, $datedRemoteDir);
-    my $accessDir 
+    my $accessDir
         = Path::Class::Dir->new($projectDir, "access");
-    my $logDir 
+    my $logDir
         = Path::Class::Dir->new($accessDir, "logs");
-    my $copiedLogPath 
+    my $copiedLogPath
         = Path::Class::Dir->new($logDir, $copiedLog);
-    my $errorLogPath 
+    my $errorLogPath
         = Path::Class::Dir->new($logDir, $errorLog);
-    my $rsyncLogPath 
+    my $rsyncLogPath
         = Path::Class::Dir->new($logDir, $rsyncLog);
-    my $videoNoticeDir 
+    my $videoNoticeDir
         = Path::Class::Dir->new($projectDir, "video");
-    my $remoteVideoNoticeDir 
+    my $remoteVideoNoticeDir
         = Path::Class::Dir->new($backupDir, $datedRemoteDir, "video");
-    
+
     # Attempt the transfer if this concert has not yet been transferred to the
     # libary, or if it was attempted, but there were errors
-    if (   ( (!-e $copiedLogPath) && (!-e $errorLogPath) ) 
-        || (-e $errorLogPath) 
-    ) {        
-        
+    if (   ( (!-e $copiedLogPath) && (!-e $errorLogPath) )
+        || (-e $errorLogPath)
+    ) {
+
         # Create directories
-        system($mkdir, $mkdirArgs, $projectDir) == 0 
+        system($mkdir, $mkdirArgs, $projectDir) == 0
             or croak "Failed to create $projectDir : $? \n";
-        system($mkdir, $mkdirArgs, $logDir) == 0 
+        system($mkdir, $mkdirArgs, $logDir) == 0
             or croak "Failed to create $logDir : $? \n";
 
         # Sync the data from remote location to concert directory
@@ -380,52 +380,52 @@ sub transferFiles {
 
         # Set permissions on the transferred directory
         DRA::setPermissions($projectDir,$appUser,$appGroup);
-        
+
         #if (-d $remoteVideoNoticeDir ) {
         #    $message = "Transferring video files...";
         #    $message .= transferVideo($datedRemoteDir);
         #} else {
         #    $message = "No video files found...";
         #}
-        
-        $message 
+
+        $message
             .= "Successfully transferred $datedRemoteDir to concert folder. ";
-    
+
         # Write the results to a new log file
         DRA::logger($results, $rsyncLogPath);
 
-    } 
+    }
 
     # If the transfer log exists and there is no transfer error log, the
     # concert was sucessfully transferred.
     elsif ((-e $copiedLogPath) && (!-e $errorLogPath)) {
-    
+
         $message
             = "$datedRemoteDir has already been successfully transfered to "
             . "the library, but is still on the PC.  It won't be re-rsynced "
             . "unless the log files are deleted to confirm it should be "
             . "retransfered.";
-    
-    } 
+
+    }
 
     # An unknown case...
     else {
-    
-        $message 
+
+        $message
             = "$datedRemoteDir was not backed up either because it is "
             . "no longer on the remote station or something else is wrong";
-    
+
     }
-    
+
     return $message;
-    
+
 }
 
 
 
 # -------------------------------------------------------------------
 # Name:   transferVideo
-# Desc:   Transfers video files from remote station to the 
+# Desc:   Transfers video files from remote station to the
 #         concert directory
 # Input:  remoteProjectDir
 # Output: message
@@ -434,60 +434,60 @@ sub transferVideo {
 
     my $datedRemoteDir = shift;
     my $message;
-    
+
     my @accessVideoExts = split(/ /, $interestedAccessVideoExts);
     my @presVideoExts = split(/ /, $interestedPreservVideoExts);
-    my $remoteVideoNoticeDir 
+    my $remoteVideoNoticeDir
         = Path::Class::Dir->new($mpPath, $datedRemoteDir, "video");
-    my $projectDir 
+    my $projectDir
         = Path::Class::Dir->new($audioDir, $semester, $datedRemoteDir);
     my $accessDir = Path::Class::Dir->new($projectDir, "access");
     my $videoDir = Path::Class::Dir->new($projectDir, "video");
     my $logDir = Path::Class::Dir->new($accessDir, "logs");
     my $rsyncLogPath = Path::Class::Dir->new($logDir, $rsyncLog);
-    
+
     # create video mount point, if needed
-    if (! -d $videoMACMountPoint) { 
-        system($mkdir, $mkdirArgs, $videoMACMountPoint) == 0 or 
+    if (! -d $videoMACMountPoint) {
+        system($mkdir, $mkdirArgs, $videoMACMountPoint) == 0 or
             die "Failed to create video mount point "
             .   "$videoMACMountPoint : $? \n";
     }
-    
+
     # mount remote share via afp
     # Can't seem to fork this command, so we'll use backticks (Bugger!)
     my $connString
-        = "afp://" 
-        . $videoUser 
-        . ":" 
-        . $videoPass 
-        . "\@" 
-        . $videoMAC 
-        . "/" 
+        = "afp://"
+        . $videoUser
+        . ":"
+        . $videoPass
+        . "\@"
+        . $videoMAC
+        . "/"
         . $videoMACVolume
         ;
-    my $command 
+    my $command
         = join(" ", $afpMount, $connString, $videoMACMountPoint, "2>&1");
     DRA::logger("Connecting to video share $share", $logFile);
     my $results = `$command`;
     die "Caught error mounting $videoMAC : $? \n" if $results;
-    
+
     # do we need this???
     my $videoMACMounted = "yes";
-    
-    my $remoteVideoProjDir 
+
+    my $remoteVideoProjDir
         = Path::Class::Dir->new($videoMACMountPoint, $datedRemoteDir);
     if (!-d $remoteVideoProjDir) {
 
         # If the sizes don't match, send a message
-        $message 
+        $message
             = "Concert folder $datedRemoteDir stipulates "
             . "Video but it cannot be found on video computer.";
 
     }
     else {
-        
-        $message = "Transferring video files";    
-        foreach my $accessVideoExt (@accessVideoExts) {    
+
+        $message = "Transferring video files";
+        foreach my $accessVideoExt (@accessVideoExts) {
             my @args = split(/ /, $rsyncTranArgs);
             # add trailing slash to source dir so rsync behaves the way we
             # want it to
@@ -497,7 +497,7 @@ sub transferVideo {
             # Write the results to a new log file
             DRA::logger($results, $rsyncLogPath);
         }
-        
+
         foreach my $presVideoExt (@presVideoExts) {
             my @args = split(/ /, $rsyncTranArgs);
             # add trailing slash to source dir so rsync behaves the way we
@@ -512,8 +512,8 @@ sub transferVideo {
     }
 
     return $message;
-        
-} 
+
+}
 
 
 # -------------------------------------------------------------------
@@ -549,7 +549,7 @@ dra-backup - Copies files from remote recording stations
 
 =head1 VERSION
 
-This documentation refers to dra-backup version 2.0
+This documentation refers to dra-backup version 2.1
 
 =head1 USAGE
 
@@ -559,7 +559,8 @@ B<dra-backup [ -help ] [any options from dra.conf]>
 
 B<-help> Displays brief synopsis of usage.
 
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at
+runtime in the format:
 
 -[variable name] [value]
 
@@ -584,14 +585,14 @@ The username that as acces to the specified share on the hosting computer.
 
 B<-smbPass>
 
-The password for the above user. Note: if the password is given in a script, it
-will be readable.
+The password for the above user. Note: if the password is given in a script,
+it will be readable.
 
 B<-share>
 
-The fully-qualified domain name of the computer hosting the samba share and the
-name of the share.  Format should be: [computer_name]/[share_name].  See above
-examples.
+The fully-qualified domain name of the computer hosting the samba share and
+the name of the share.  Format should be: [computer_name]/[share_name].  See
+above examples.
 
 
 =head1 DESCRIPTION
@@ -614,19 +615,20 @@ the setPermissions subroutine in the DRA.pm file.
 
 If no options are specified when the command is run, the defaults in
 DRA_HOME/conf/dra.conf are used.  Passing any of the variables listed in the
-dra.conf file as switches overrides the values given in the dra.conf file.
-See EXAMPLES for more information
+dra.conf file as switches overrides the values given in the dra.conf file. See
+EXAMPLES for more information
 
 =head1 DIAGNOSTICS
 
 Upon successful execution, the application with exit with no output. Any fatal
-error will be written to standard output and the application ceases immediately.
+error will be written to standard output and the application ceases
+immediately.
 
-The most common failures would be: 1) the presence of any blocking processes as
-listed in the dra.conf file, 2) an unavailable mount point on the client
-machine, 3) an unavailable share on the remote station, 4) incorrect credentials
-for accessing the samba share on the host computer, and 5) absence of the
-DRA_HOME environment variable.
+The most common failures would be: 1) the presence of any blocking processes
+as listed in the dra.conf file, 2) an unavailable mount point on the client
+machine, 3) an unavailable share on the remote station, 4) incorrect
+credentials for accessing the samba share on the host computer, and 5) absence
+of the DRA_HOME environment variable.
 
 Detailed information about other non-fatal errors will be found in the
 application log under the log directory.
@@ -638,11 +640,11 @@ options need to be specified such as different remote shares, groups, and/or
 users and passwords.
 
 A default username and password can be specified in the dra.conf file and then
-overridden at execution time with the appropriate switch passed via the command
-line.
+overridden at execution time with the appropriate switch passed via the
+command line.
 
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.  For example:
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.  For example:
 
 B<DRA_HOME=/usr/local/audio dra-backup [options]>
 
@@ -657,7 +659,7 @@ Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

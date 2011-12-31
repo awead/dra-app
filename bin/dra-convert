@@ -424,7 +424,7 @@ DRA::logger( "Finished processing all files under $path", $logFile );
 exit 0;
 
 # ----------------------------------------------------------------------------
-# 
+#
 # Subroutines
 #
 # ----------------------------------------------------------------------------
@@ -437,7 +437,7 @@ exit 0;
 
 sub error {
     my $message = shift;
-    
+
     if ($message) {
         print $message . "\n";
     }
@@ -445,7 +445,7 @@ sub error {
         print "Invalid option\n";
         &main::help;
     }
-    
+
     exit 1;
 }
 
@@ -463,7 +463,7 @@ dra-convert - Converts preservation audio files to access format
 
 =head1 VERSION
 
-This documentation refers to dra-convert version 2.0.
+This documentation refers to dra-convert version 2.1
 
 =head1 USAGE
 
@@ -471,8 +471,8 @@ B<dra-convert [-help] [dra.conf options] [project_directory]>
 
 =head1 REQUIRED ARGUMENTS
 
-A B<project directory> is required for the script to run. This must be the full
-path the directory.  For example:
+A B<project directory> is required for the script to run. This must be the
+full path the directory.  For example:
 
 B<dra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
@@ -480,7 +480,8 @@ B<dra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
 B<-help> Displays brief synopsis of usage.
 
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at
+runtime in the format:
 
 -[variable name] [value]
 
@@ -488,17 +489,17 @@ Example:
 
 B<dra-mdss -email joebob@indiana.edu [directory]>
 
-Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu.
-Generally, this script is called during the dra-transfer script, so passing
-options to this script is not needed.  However, one may call this script
-individually if needed.
+Will execute the script overriding the email address specified in dra.conf
+with joebob@indiana.edu. Generally, this script is called during the
+dra-transfer script, so passing options to this script is not needed.
+However, one may call this script individually if needed.
 
 =head1 DESCRIPTION
 
-The dra-convert script locates all the wave files found in the project directory
-and converts them from 24/96 to 16/44 resolution.  During this process, it also
-computes gain across all the files and applies the correct amount of
-normalization to each file.
+The dra-convert script locates all the wave files found in the project
+directory and converts them from 24/96 to 16/44 resolution.  During this
+process, it also computes gain across all the files and applies the correct
+amount of normalization to each file.
 
 Temporary files are written somewhere else other than the project directory so
 that once complete, the newly created access files will be copied over the to
@@ -506,22 +507,22 @@ access directory of the project directory. If there is any failure along the
 way, temp files are removed and process can repeat itself until there is a
 successful outcome.
 
-The script will attempt to convert all audio files until there is success. This
-is determined by the absence of an error log under the project's log directory
-and the presence of conversion log as well.
+The script will attempt to convert all audio files until there is success.
+This is determined by the absence of an error log under the project's log
+directory and the presence of conversion log as well.
 
 =head1 DIAGNOSTICS
 
 Upon successful execution, the application with exit with no output. Any fatal
-error will be written to standard output and the application ceases immediately.
-Messages are written to the application's own log file found in the applications
-log directory, as well as a separate log file found in the project's log
-directory.
+error will be written to standard output and the application ceases
+immediately. Messages are written to the application's own log file found in
+the applications log directory, as well as a separate log file found in the
+project's log directory.
 
 In the case of errors written to standard out, the error will appear on the
 command line shell or will be collected by the calling script, usually
-dra-transfer. The presence of any fatal error will cause the script to write an
-error log to the project log directory found in the access folder of the
+dra-transfer. The presence of any fatal error will cause the script to write
+an error log to the project log directory found in the access folder of the
 project. The presence of this file will mean the conversion will be repeated
 again if the script is called.
 
@@ -530,8 +531,8 @@ again if the script is called.
 A properly configured dra.conf file should be sufficient for the dra-convert
 script to run.
 
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.
 
 =head1 DEPENDENCIES
 
@@ -545,11 +546,11 @@ location is given in dra.conf.
 
 Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
-Travis Gregg  
+Travis Gregg
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

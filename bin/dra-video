@@ -124,13 +124,13 @@ if ( $config->get("help") ) {
 
 # Check input
 if (! $ARGV[0]) {
-    main::error("No folder specified"); 
+    main::error("No folder specified");
 }
 my $projectDir = Path::Class::Dir->new($ARGV[0]);
 if (! -d $projectDir) {
     main::error("Specified folder does not exist");
 }
-            
+
 # Check our local block list
 #my $run = DRA::checkBlocks($blockList);
 #if ($run) {
@@ -203,7 +203,7 @@ DRA::logger( "OK", $videoLogPath );
 
 DRA::logger( "Checking file names ...", $videoLogPath );
 # Check project directory contents
-my $pderr 
+my $pderr
     = DRA::checkVideoDirectoryContents($projectDir, $varID, $videoTypeList);
 if ($pderr) {
     push @errors, $pderr;
@@ -215,7 +215,7 @@ DRA::logger( "OK", $videoLogPath );
 # Build paths to remote files on DRA server
 my $remoteProjectDir = Path::Class::Dir->new($audioDir, $semester, $datedDir);
 my $remoteAccessDir  = Path::Class::Dir->new($remoteProjectDir, "access" );
-my $remoteLogDir     
+my $remoteLogDir
     = Path::Class::Dir->new($remoteProjectDir, "access", "logs" );
 
 # Check block list on remote server
@@ -251,7 +251,7 @@ if ( (-e $listPath ) and (! $force) ) {
 }
 else {
     DRA::logger(
-        "...it's not there; creating video file list", 
+        "...it's not there; creating video file list",
         $videoLogPath
     );
     my @videoContents = DRA::readDirectory($projectDir);
@@ -280,12 +280,12 @@ else {
         }
     }
     my $videoFileList = join "; ", @videoFiles;
-    my $list 
+    my $list
         = "Video files stored on MDSS in \"audiopro\" account: "
         . $videoFileList
         . "\n\n";
     DRA::logger(
-        "...writting video file list to local project directory", 
+        "...writting video file list to local project directory",
         $videoLogPath
     );
     DRA::writer( $list, $listPath );
@@ -318,15 +318,15 @@ else {
             host   => $draServer,
         }
     );
-    
+
     if ($err) {
-        DRA::logger( 
+        DRA::logger(
             "File list copy failed -- see error log",
-            $videoLogPath 
+            $videoLogPath
         );
         push @errors, $err;
     }
-    
+
     &main::evaluateErrors;
 }
 
@@ -339,12 +339,12 @@ else {
 # transfer the additional video files.
 DRA::logger("Logging into remote server ...", $videoLogPath);
 DRA::logger("Checking project directory: $remoteProjectDir", $videoLogPath);
-DRA::logger("...checking logs under remote project directory", $videoLogPath); 
-if ((! main::remoteFileExists($remoteMdssLog)) or 
+DRA::logger("...checking logs under remote project directory", $videoLogPath);
+if ((! main::remoteFileExists($remoteMdssLog)) or
     (main::remoteFileExists($remoteMdssErrorLog)) or
-    (! main::remoteFileExists($remoteTransferLog)) or 
+    (! main::remoteFileExists($remoteTransferLog)) or
     (main::remoteFileExists($remoteErrorLog))) {
-     
+
     my $message
         = "The audio portion of the concert has either not been successfully "
         . "transferred to Variations or MDSS yet."
@@ -379,7 +379,7 @@ DRA::logger("Copying DVD files to remote DRA server", $projectLogPath);
 my @dvdFiles = DRA::readDirectory($projectDir, "img");
 foreach my $dvd (@dvdFiles) {
 
-    my $remoteDvd 
+    my $remoteDvd
         = Path::Class::File->new($remoteProjectDir, "access", $dvd);
     if (main::remoteFileExists($dvd) and !$force) {
         my $message = "$dvd has already been transfered";
@@ -404,9 +404,9 @@ foreach my $dvd (@dvdFiles) {
         );
 
         if ($err) {
-            DRA::logger( 
+            DRA::logger(
                 "DVD file copy failed -- see error log",
-                $projectLogPath 
+                $projectLogPath
             );
             push @errors, $err;
         }
@@ -414,9 +414,9 @@ foreach my $dvd (@dvdFiles) {
         DRA::logger("Computing md5 sums", $projectLogPath);
         my ($md5, $md5err) = DRA::createMD5($source,$dvd);
         if ($md5err) {
-            DRA::logger( 
+            DRA::logger(
                 "MD5 creation failed -- see error log",
-                $projectLogPath 
+                $projectLogPath
             );
             push @errors, $md5err;
         }
@@ -442,7 +442,7 @@ foreach my $dvd (@dvdFiles) {
 
         DRA::logger("... done, removing placholder file", $projectLogPath);
         DRA::clearLog($errorLogPath);
-       
+
     }
 }
 
@@ -498,13 +498,13 @@ foreach my $name (@videoDirs) {
     my $src = Path::Class::Dir->new($projectDir, $name);
     my @contents = DRA::readDirectory($src);
     if (@contents) {
-    
+
         # Assume htar will fail.
         # We create a mdss_error.log file first, and delete it upon
         # success.
         my $placeHolder = "PLACEHOLDER: running htar send";
         DRA::logger($placeHolder, $errorLogPath);
-    
+
         my $remoteName = $name . ".tar";
         my $remotePath = Path::Class::File->new($remoteMdssDir, $remoteName);
         my ($error, $htarMessage) = DRA::htarSend(
@@ -572,7 +572,7 @@ sub sendFiles {
 
     my ($srcDir, $remoteSrcDir, $file) = @_;
     my @errors;
-    
+
     my $src = Path::Class::File->new($srcDir, $file);
     # Create MD5 sum
     DRA::logger("Creating MD5 sum for $file ...", $projectLogPath);
@@ -609,7 +609,7 @@ sub sendFiles {
     else {
         DRA::logger("done.", $projectLogPath);
     }
-        
+
     # Send file to MDSS
     my $dest = Path::Class::File->new($remoteSrcDir, $file);
     DRA::logger("Sending $file ...", $projectLogPath);
@@ -631,7 +631,7 @@ sub sendFiles {
     else {
         DRA::logger("done.", $projectLogPath);
     }
-        
+
     # Check transfer
     DRA::logger("Verifying ...", $projectLogPath);
     my $check_err = DRA::hsiCheck(
@@ -681,7 +681,7 @@ sub error {
         print "Invalid option\n";
         &main::help;
     }
-    
+
     exit 1;
 }
 
@@ -697,7 +697,7 @@ sub help {
 # -------------------------------------------------------------------
 
 sub remoteCommand {
-    
+
     my $command = shift;
 
     my ($out, $err) = DRA::sshCommand(
@@ -726,7 +726,7 @@ sub remoteCommand {
 # -------------------------------------------------------------------
 
 sub remoteQuietCommand {
-    
+
     my $command = shift;
 
     my ($out, $err) = DRA::sshCommand(
@@ -814,7 +814,7 @@ dra-video - Transfers video files to local server and MDSS
 
 =head1 VERSION
 
-This documentation refers to dra-video version 2.1.
+This documentation refers to dra-video version 2.1
 
 =head1 USAGE
 
@@ -831,9 +831,9 @@ B<dra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
 B<-help> Displays brief synopsis of usage.
 
-B<-f> Force flag.  The project will be transferred regardless of any errors 
+B<-f> Force flag.  The project will be transferred regardless of any errors
 or if the concert was successfully sent at an earlier time.
- 
+
 B<video.conf> Any setting from the video.conf file may be passed to the script at runtime in the format:
 
 -[variable name] [value]
@@ -846,6 +846,28 @@ Will execute the script overriding the email address specified in video.conf wit
 
 =head1 DESCRIPTION
 
+This script works in conjunction with dra-transfer to coordinate transfers of video files
+to the main dra server and to MDSS. Whereas dra-transfer and dra-mdss are intended to be run
+from a single machine or server where audio data is "pulled" from different workstations, dra-video is
+designed to be run on multiple workstations where video data is "pushed" to both
+the main dra server and mdss.
+
+Processing a project directory will take two executions of the dra-video script.  On the first
+pass, the script will first check for properly named files and folders.  If these are correct, it
+will next create a text listing of files and send them to the main dra server.  A corresponding
+project directory will already exist on the main dra server with any relevant audio data.  Once
+this file listing is copied to the server, the dra-transfer script will be able to complete its
+transfer of audio data to Variations and MDSS.  See the documentation for dra-transfer and
+dra-mdss for more information.
+
+On the second pass of the script, dra-video logs into the main dra server to determine if both
+dra-transfer and dra-mdss have completed successfully. Upon the successful complete of both
+those scripts, dra-video will transfer dvd image files to the main dra server, and then
+transfer all video files to MDSS.  Individual video files are transferred via HSI, and are
+re-downloaded to verify md5 sums.  Folders of video files are transferred via HTAR.
+
+The last step of the script is to copy the video transfer log to the dra server for additional
+storage.
 
 =head1 DIAGNOSTICS
 
@@ -873,7 +895,7 @@ Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2011, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

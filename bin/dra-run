@@ -198,8 +198,8 @@ foreach my $dir ( @projects ) {
 
     if ( $t_err or $t_out ) {
         DRA::logger("...transfer FAILED. Skipping to next folder", $logFile);
-        my $message 
-            = "dra-transfer output: " . $t_out . "\n\n" 
+        my $message
+            = "dra-transfer output: " . $t_out . "\n\n"
             . "dra-transfer errors: " . $t_err . "\n\n"
             ;
         $errors{$dir} = $message;
@@ -208,7 +208,7 @@ foreach my $dir ( @projects ) {
     else {
         DRA::logger("...transfer ok", $logFile);;
     }
-    
+
     # Check and see if marc record exists
     my @list = DRA::readDirectory( $projectDir, "txt" );
     if ( ( join " ", @list ) =~ /SD_marc/ ) {
@@ -224,7 +224,7 @@ foreach my $dir ( @projects ) {
         my $marcCommand = Path::Class::File->new( $tools, "marc.pl" );
         my ( $stdout, $stderr, $success, $exit_code ) =
             IO::CaptureOutput::capture_exec( $marcCommand, $projectDir );
-        
+
         if  ( !$success ) {
             my $message
                 = "...Marc record FAILED. "
@@ -257,22 +257,22 @@ foreach my $dir ( @projects ) {
         }
 
     }
-    
-    
+
+
     # Send to MDSS
     # Any output, whether from STDOUT or STDERR means something wrong happened
     my $mdssCommand = Path::Class::File->new( $bin, "dra-mdss" );
     my ($m_out, $m_err, $m_success, $m_exit_code) =
         IO::CaptureOutput::capture_exec( $mdssCommand, $projectDir );
-    
+
     if  ( $m_err or $m_out ) {
         my $log_message
             = "...MDSS script FAILED. "
             . "Skipping to next folder"
             ;
         DRA::logger($log_message, $logFile);
-        my $message 
-            = "dra-mdss output: " . $m_out . "\n\n" 
+        my $message
+            = "dra-mdss output: " . $m_out . "\n\n"
             . "dra-mdss errors: " . $m_err . "\n\n"
             ;
         $errors{$dir} = $message;
@@ -292,11 +292,11 @@ if (scalar(@files) >= 1) {
         $logFile
     );
     my $subject = "New JSOM MARC records";
-    my $body 
+    my $body
         = "Attached are MARC records for new concerts just delivered "
         . "to the JSOM library. If there are any problems, email "
         . "audiopro\@indiana.edu and digitize\@indiana.edu\n";
-    
+
     my $results = DRA::sendMarc(
         {
         to => $iucat,
@@ -313,7 +313,7 @@ else {
         $logFile
     );
 }
-    
+
 
 # Remove temp dir
 my @rmArgs = ("-Rf", $marcTemp);
@@ -368,11 +368,12 @@ __END__
 
 =head1 DRA-RUN
 
-dra-run - Executes dra-transfer, marc.pl and dra-mdss for a semester's projects
+dra-run - Executes dra-transfer, marc.pl and dra-mdss for a semester's
+projects
 
 =head1 VERSION
 
-This documentation refers to dra-run version 2.0.
+This documentation refers to dra-run version 2.1
 
 =head1 USAGE
 
@@ -381,8 +382,9 @@ B<dra-run [-help] [dra.conf options]>
 =head1 OPTIONS
 
 B<-help> Displays brief synopsis of usage.
- 
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at
+runtime in the format:
 
 -[variable name] [value]
 
@@ -438,11 +440,11 @@ creation.
 
 =head1 AUTHOR
 
-Adam Wead     awead@indiana.edu, amsterdamos@gmail.com 
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

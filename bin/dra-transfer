@@ -173,8 +173,8 @@ my $mdssExclude        = $config->get("mdssExclude");
 my $mv                 = $config->get("mv");
 my $mkdir              = $config->get("mkdir");
 my $rsyncLog           = $config->get("rsyncLog");
-my $appUser            = $config->get("appUser");  
-my $appGroup           = $config->get("appGroup"); 
+my $appUser            = $config->get("appUser");
+my $appGroup           = $config->get("appGroup");
 
 # Initialize command line switches
 my $force      = $config->get("f");
@@ -385,7 +385,7 @@ else {
 # log is not removed upon failure, so it will need to be manually removed
 # so that the conversion process can be re-done.  This could be changed in
 # the future to make the process more automated.
-# 
+#
 # Note to self: what happens if you don't remove it? Will some error be
 # thrown?
 
@@ -529,8 +529,8 @@ foreach my $ext (@exts) {
 
 # Set permissions on the project directory
 DRA::logger(
-    "Setting permissions on the project directory (one more time)...", 
-    $logFile 
+    "Setting permissions on the project directory (one more time)...",
+    $logFile
 );
 DRA::setPermissions($projectDir,$appUser,$appGroup);
 
@@ -768,7 +768,7 @@ else {
                 or croak "Failed to copy $wave to burn folder";
         }
     }
-    
+
     DRA::logger( "done.", $logFile );
 
 }
@@ -831,7 +831,7 @@ dra-transfer - Checks, converts and transfers a single project to Variations
 
 =head1 VERSION
 
-This documentation refers to dra-transfer version 2.0.
+This documentation refers to dra-transfer version 2.1
 
 =head1 USAGE
 
@@ -839,8 +839,8 @@ B<dra-transfer [-help] [-r -f] [dra.conf options] [project directory]>
 
 =head1 REQUIRED ARGUMENTS
 
-A B<project directory> is required for the script to run. This must be the full
-path the directory.  For example:
+A B<project directory> is required for the script to run. This must be the
+full path the directory.  For example:
 
 B<dra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
@@ -848,12 +848,14 @@ B<dra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
 B<-help> Displays brief synopsis of usage.
 
-B<-r> Retransfer switch. Transfers a project even if it has already been successfully sent before.
+B<-r> Retransfer switch. Transfers a project even if it has already been
+successfully sent before.
 
-B<-f> Force flag. Performs a force transfer where project directory checks are skipped and the 
-concert is sent as-is.
- 
-B<dra.conf> Any setting from the dra.conf file may be passed to the script at runtime in the format:
+B<-f> Force flag. Performs a force transfer where project directory checks are
+skipped and the concert is sent as-is.
+
+B<dra.conf> Any setting from the dra.conf file may be passed to the script at
+runtime in the format:
 
 -[variable name] [value]
 
@@ -861,32 +863,41 @@ Example:
 
 B<dra-run -email joebob@indiana.edu [directory]>
 
-Will execute the script overriding the email address specified in dra.conf with joebob@indiana.edu
+Will execute the script overriding the email address specified in dra.conf
+with joebob@indiana.edu
 
 =head1 DESCRIPTION
 
-dra-transfer checks the consistency of a given project directory, such as filenames and
-contents. It then converts the audio files using dra-convert, and sends the files to
-Variations.
+dra-transfer checks the consistency of a given project directory, such as
+filenames and contents. It then converts the audio files using dra-convert,
+and sends the files to Variations.
 
-In preparation for dra-mdss and reporting to Variations, dra-transfer will create
-a data file and text file with the new names of the files in the directory. 
-However, the filename will not change until dra-mdss runs using the data file
-created by dra-transfer. Successfully complete projects will also have some of the contents copied to the
-burn folder for CD creation.
+The presence of a directory named "video" in the project indicates that the
+project has video files residing on different computer. The video processing
+computer is responsible for sending a text listing of files from the project
+directory to the project log directory on the dra server. If dra-transfer
+runs, and detects a video folder but no corresponding text file with the file
+names, the script will abort and not continue until this text file is present.
 
-Once a project is successfully converted and transferred, any further action on it will
-have no effect unless the force (-f) or resend (-r) flags are used. Any errors are
-written to an error log in the project's log directory. The presence of this log will
-cause dra-transfer to attempt the transfer the project the next time it is called.
+In preparation for dra-mdss and reporting to Variations, dra-transfer will
+create a data file and text file with the new names of the files in the
+directory. However, the filename will not change until dra-mdss runs using the
+data file created by dra-transfer. Successfully complete projects will also
+have some of the contents copied to the burn folder for CD creation.
+
+Once a project is successfully converted and transferred, any further action
+on it will have no effect unless the force (-f) or resend (-r) flags are used.
+Any errors are written to an error log in the project's log directory. The
+presence of this log will cause dra-transfer to attempt the transfer the
+project the next time it is called.
 
 =head1 DIAGNOSTICS
 
-Upon successful execution, the dra-transfer with exit with no output. Any fatal
-error will be written to standard output and the application will exit immediately.
-Messages are written to the application's own log file found in the application
-log directory, as well as a separate log file found in the project's log
-directory in the access folder.
+Upon successful execution, the dra-transfer with exit with no output. Any
+fatal error will be written to standard output and the application will exit
+immediately. Messages are written to the application's own log file found in
+the application log directory, as well as a separate log file found in the
+project's log directory in the access folder.
 
 In the case of errors written to standard out, the error will appear on the
 command line shell or will be collected by the calling script, usually
@@ -895,13 +906,18 @@ error log to the project log directory found in the access folder of the
 project. The presence of this file will mean dra-transfer will run again when
 called either directly or by dra-run.
 
+In cases where video is involved, the video processing computer will not send
+any files to the dra server or MDSS until this script has completed sending
+all audio files to Variations and MDSS successfully.  For more information,
+refer to the documentation pages for dra-video.
+
 =head1 CONFIGURATION AND ENVIRONMENT
 
-A properly configured dra.conf file should be sufficient for dra-transfer
-to work.
+A properly configured dra.conf file should be sufficient for dra-transfer to
+work.
 
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.
 
 =head1 DEPENDENCIES
 
@@ -909,11 +925,11 @@ The dra-convert script is required.
 
 =head1 AUTHOR
 
-Adam Wead     awead@indiana.edu, amsterdamos@gmail.com 
+Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 

@@ -4,7 +4,7 @@
 # Desc: Wrapper script that calls another dra script
 #
 # Adam Wead
-# Jacobs School of Music 
+# Jacobs School of Music
 # Indiana University
 # -------------------------------------------------------------------------
 
@@ -172,14 +172,14 @@ my ($stdout, $stderr, $success, $exit_code) =
 if (!$name) {
     $name = "Unspecified";
 }
- 
+
 my $message;
 my $subject;
 if ($success) {
     if ($stdout) {
 	    $subject = $name. ": Some errors";
-        $message 
-            = $script 
+        $message
+            = $script
             . " exited successfully but output was detected"
             . " indicating there may have been errors.  Output was: \n"
             . $stdout;
@@ -189,7 +189,7 @@ if ($success) {
 	    $message = "Successfully executed $script";
     }
 } elsif ($stderr) {
-	$message 
+	$message
         = "$script did not run properly. "
         . "Error code was $exit_code :\n $stderr";
 	$subject = $name . ": Failed";
@@ -201,9 +201,9 @@ if ($success) {
 # Send email and exit
 DRA::sendEmail(
     {
-    to      => $email, 
-    from    => $sender, 
-    subject => $subject, 
+    to      => $email,
+    from    => $sender,
+    subject => $subject,
     body    => $message,
     }
 );
@@ -226,7 +226,7 @@ sub error {
     else {
         print "Invalid option\n";
     }
-                                                     
+
     &main::help;
     exit 0;
 }
@@ -239,11 +239,12 @@ __END__
 
 =head1 DRA-NOTIFY
 
-dra-notify - Executes a script and sends out an email notification of the results
+dra-notify - Executes a script and sends out an email notification of the
+results
 
 =head1 VERSION
 
-This documentation refers to dra-notify version 2.0.
+This documentation refers to dra-notify version 2.1
 
 =head1 USAGE
 
@@ -251,8 +252,8 @@ B<Usage: dra-notify [-help] [script]>
 
 =head1 REQUIRED ARGUMENTS
 
-A B<script> or executable file is required for dra-notify to run. Use the
-path relative to DRA_HOME
+A B<script> or executable file is required for dra-notify to run. Use the path
+relative to DRA_HOME
 
 Examples:
 
@@ -277,8 +278,8 @@ B<-sender> Overrides the sender setting in dra.conf.
 
 =head1 DESCRIPTION
 
-dra-notify is a simple wrapper command that executes any script and 
-emails the results.
+dra-notify is a simple wrapper command that executes any script and emails the
+results.
 
 =head1 DIAGNOSTICS
 
@@ -286,7 +287,8 @@ dra-notify only reports the success or failure of the script it is calling.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-A properly configured dra.conf and the DRA_HOME environment variable are required.
+A properly configured dra.conf and the DRA_HOME environment variable are
+required.
 
 =head1 AUTHOR
 
@@ -294,7 +296,7 @@ Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2010, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut
 
