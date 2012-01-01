@@ -131,93 +131,101 @@
 .rm #[ #] #H #V #F C
 .\" ========================================================================
 .\"
-.IX Title "DRA-CONVERT 1"
-.TH DRA-CONVERT 1 "2011-12-31" "perl v5.10.0" "User Contributed Perl Documentation"
+.IX Title "DRA-VIDEO 1"
+.TH DRA-VIDEO 1 "2011-12-31" "perl v5.10.0" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
 .nh
-.SH "DRA-CONVERT"
-.IX Header "DRA-CONVERT"
-dra-convert \- Converts preservation audio files to access format
+.SH "DRA-VIDEO"
+.IX Header "DRA-VIDEO"
+dra-video \- Transfers video files to local server and \s-1MDSS\s0
 .SH "VERSION"
 .IX Header "VERSION"
-This documentation refers to dra-convert version 2.1
+This documentation refers to dra-video version 2.1
 .SH "USAGE"
 .IX Header "USAGE"
-\&\fBdra-convert [\-help] [dra.conf options] [project_directory]\fR
+\&\fBdra-video [\-help] [\-f] [video.conf options] [project_directory]\fR
 .SH "REQUIRED ARGUMENTS"
 .IX Header "REQUIRED ARGUMENTS"
 A \fBproject directory\fR is required for the script to run. This must be the
 full path the directory.  For example:
 .PP
-\&\fBdra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234\fR
+\&\fBdra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234\fR
 .SH "OPTIONS"
 .IX Header "OPTIONS"
 \&\fB\-help\fR Displays brief synopsis of usage.
 .PP
-\&\fBdra.conf\fR Any setting from the dra.conf file may be passed to the script at
-runtime in the format:
+\&\fB\-f\fR Force flag.  The project will be transferred regardless of any errors or
+if the concert was successfully sent at an earlier time.
+.PP
+\&\fBvideo.conf\fR Any setting from the video.conf file may be passed to the script
+at runtime in the format:
 .PP
 \&\-[variable name] [value]
 .PP
 Example:
 .PP
-\&\fBdra-mdss \-email joebob@indiana.edu [directory]\fR
+\&\fBdra-video \-email joebob@indiana.edu [directory]\fR
 .PP
-Will execute the script overriding the email address specified in dra.conf
-with joebob@indiana.edu. Generally, this script is called during the
-dra-transfer script, so passing options to this script is not needed.
-However, one may call this script individually if needed.
+Will execute the script overriding the email address specified in video.conf
+with joebob@indiana.edu
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-The dra-convert script locates all the wave files found in the project
-directory and converts them from 24/96 to 16/44 resolution.  During this
-process, it also computes gain across all the files and applies the correct
-amount of normalization to each file.
+This script works in conjunction with dra-transfer to coordinate transfers of
+video files to the main dra server and to \s-1MDSS\s0. Whereas dra-transfer and
+dra-mdss are intended to be run from a single machine or server where audio
+data is \*(L"pulled\*(R" from different workstations, dra-video is designed to be run
+on multiple workstations where video data is \*(L"pushed\*(R" to both the main dra
+server and mdss.
 .PP
-Temporary files are written somewhere else other than the project directory so
-that once complete, the newly created access files will be copied over the to
-access directory of the project directory. If there is any failure along the
-way, temp files are removed and process can repeat itself until there is a
-successful outcome.
+Processing a project directory will take two executions of the dra-video
+script.  On the first pass, the script will first check for properly named
+files and folders.  If these are correct, it will next create a text listing
+of files and send them to the main dra server.  A corresponding project
+directory will already exist on the main dra server with any relevant audio
+data.  Once this file listing is copied to the server, the dra-transfer script
+will be able to complete its transfer of audio data to Variations and \s-1MDSS\s0.
+See the documentation for dra-transfer and dra-mdss for more information.
 .PP
-The script will attempt to convert all audio files until there is success.
-This is determined by the absence of an error log under the project's log
-directory and the presence of conversion log as well.
+On the second pass of the script, dra-video logs into the main dra server to
+determine if both dra-transfer and dra-mdss have completed successfully. Upon
+the successful complete of both those scripts, dra-video will transfer dvd
+image files to the main dra server, and then transfer all video files to \s-1MDSS\s0.
+ Individual video files are transferred via \s-1HSI\s0, and are re-downloaded to
+verify md5 sums.  Folders of video files are transferred via \s-1HTAR\s0.
+.PP
+The last step of the script is to copy the video transfer log to the dra
+server for additional storage.
 .SH "DIAGNOSTICS"
 .IX Header "DIAGNOSTICS"
-Upon successful execution, the application with exit with no output. Any fatal
-error will be written to standard output and the application ceases
-immediately. Messages are written to the application's own log file found in
-the applications log directory, as well as a separate log file found in the
-project's log directory.
-.PP
-In the case of errors written to standard out, the error will appear on the
-command line shell or will be collected by the calling script, usually
-dra-transfer. The presence of any fatal error will cause the script to write
-an error log to the project log directory found in the access folder of the
-project. The presence of this file will mean the conversion will be repeated
-again if the script is called.
+Upon successful completion of the script, dra-video returns no output.
+Otherwise, errors are reported to \s-1STDOUT\s0 as well as an error log file in the
+project log directory.  Additional information about the scripts overall
+progress is written to a script-level log file under the script log directory.
+ By default, this is the logs directory in the application's home directory.
 .SH "CONFIGURATION AND ENVIRONMENT"
 .IX Header "CONFIGURATION AND ENVIRONMENT"
-A properly configured dra.conf file should be sufficient for the dra-convert
-script to run.
+A properly configured video.conf file should be sufficient for dra-video
+script to run. The format is the same as the dra.conf file and has many
+duplicated values. However, there is no shared information in either of the
+configuration files.  So any relevant changes to dra.conf must also be
+duplicated in video.conf and vice versa.
 .PP
 The \s-1DRA_HOME\s0 environment variable is required and can be set on a per-user
 basis or at execution time.
 .SH "DEPENDENCIES"
 .IX Header "DEPENDENCIES"
-This script requires the Apple program \fBafconvert\fR as well as the third party
-software program \fBnormalize\fR.  Afconvert should come with every \s-1OSX\s0
-installation and normalize is available for free via \s-1GPL\s0. Generally, it should
-be installed to /usr/local/bin but it can be installed anywhere so long as its
-location is given in dra.conf.
+\&\s-1HTAR\s0 and \s-1HSI\s0 are required to send the files to \s-1MDSS\s0.  These applications are
+available through \s-1IU\s0's mass datastore service.  See
+http://kb.iu.edu/data/auvo.html for the latest client builds available.
+.PP
+You will also need to create kerberos keytab files to enable automate access
+to the mdss account. For more information on creating keytab files, see
+http://kb.iu.edu/data/avdb.html.
 .SH "AUTHOR"
 .IX Header "AUTHOR"
 Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
-.PP
-Travis Gregg
 .SH "LICENCE AND COPYRIGHT"
 .IX Header "LICENCE AND COPYRIGHT"
 Copyright 2012, the Trustees of Indiana University.

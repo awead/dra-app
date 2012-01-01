@@ -131,93 +131,63 @@
 .rm #[ #] #H #V #F C
 .\" ========================================================================
 .\"
-.IX Title "DRA-CONVERT 1"
-.TH DRA-CONVERT 1 "2011-12-31" "perl v5.10.0" "User Contributed Perl Documentation"
+.IX Title "DRA-VIDEO-RUN 1"
+.TH DRA-VIDEO-RUN 1 "2011-12-31" "perl v5.10.0" "User Contributed Perl Documentation"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
 .nh
-.SH "DRA-CONVERT"
-.IX Header "DRA-CONVERT"
-dra-convert \- Converts preservation audio files to access format
+.SH "DRA-VIDEO-RUN"
+.IX Header "DRA-VIDEO-RUN"
+dra-video-run \- Executes dra-video on multiple project directories
 .SH "VERSION"
 .IX Header "VERSION"
-This documentation refers to dra-convert version 2.1
+This documentation refers to dra-video version 2.1
 .SH "USAGE"
 .IX Header "USAGE"
-\&\fBdra-convert [\-help] [dra.conf options] [project_directory]\fR
+\&\fBdra-video-run [\-help] [\-f] [video.conf options]\fR
 .SH "REQUIRED ARGUMENTS"
 .IX Header "REQUIRED ARGUMENTS"
-A \fBproject directory\fR is required for the script to run. This must be the
-full path the directory.  For example:
-.PP
-\&\fBdra-convert /Volumes/audio/Concerts/2010_fall/20100923vab1234\fR
+None
 .SH "OPTIONS"
 .IX Header "OPTIONS"
 \&\fB\-help\fR Displays brief synopsis of usage.
 .PP
-\&\fBdra.conf\fR Any setting from the dra.conf file may be passed to the script at
-runtime in the format:
+\&\fBvideo.conf\fR Any setting from the video.conf file may be passed to the script
+at runtime in the format:
 .PP
 \&\-[variable name] [value]
 .PP
 Example:
 .PP
-\&\fBdra-mdss \-email joebob@indiana.edu [directory]\fR
+\&\fBdra-video-run \-email joebob@indiana.edu [directory]\fR
 .PP
-Will execute the script overriding the email address specified in dra.conf
-with joebob@indiana.edu. Generally, this script is called during the
-dra-transfer script, so passing options to this script is not needed.
-However, one may call this script individually if needed.
+Will execute the script overriding the email address specified in video.conf
+with joebob@indiana.edu
 .SH "DESCRIPTION"
 .IX Header "DESCRIPTION"
-The dra-convert script locates all the wave files found in the project
-directory and converts them from 24/96 to 16/44 resolution.  During this
-process, it also computes gain across all the files and applies the correct
-amount of normalization to each file.
+This script gathers a list of project directories under one or more parent
+directories listed in the video.conf file.  dra-video-run then calls dra-video
+on each of these projects directories individually and reports on the outcome
+of each one at the completion of the script.
 .PP
-Temporary files are written somewhere else other than the project directory so
-that once complete, the newly created access files will be copied over the to
-access directory of the project directory. If there is any failure along the
-way, temp files are removed and process can repeat itself until there is a
-successful outcome.
-.PP
-The script will attempt to convert all audio files until there is success.
-This is determined by the absence of an error log under the project's log
-directory and the presence of conversion log as well.
+The script has its audio counterpart in dra-run, except that dra-video-run is
+simpler and no additional procedures are performed other than executing
+dra-video on each project directory. Like dra-run, dra-notify is used in
+conjunction with dra-video-run to email the results of processed project
+directories to individuals specified in the dra.conf file.
 .SH "DIAGNOSTICS"
 .IX Header "DIAGNOSTICS"
-Upon successful execution, the application with exit with no output. Any fatal
-error will be written to standard output and the application ceases
-immediately. Messages are written to the application's own log file found in
-the applications log directory, as well as a separate log file found in the
-project's log directory.
-.PP
-In the case of errors written to standard out, the error will appear on the
-command line shell or will be collected by the calling script, usually
-dra-transfer. The presence of any fatal error will cause the script to write
-an error log to the project log directory found in the access folder of the
-project. The presence of this file will mean the conversion will be repeated
-again if the script is called.
+See the documentation for dra-video under this section.
 .SH "CONFIGURATION AND ENVIRONMENT"
 .IX Header "CONFIGURATION AND ENVIRONMENT"
-A properly configured dra.conf file should be sufficient for the dra-convert
-script to run.
-.PP
-The \s-1DRA_HOME\s0 environment variable is required and can be set on a per-user
-basis or at execution time.
+See the documentation for dra-video under this section.
 .SH "DEPENDENCIES"
 .IX Header "DEPENDENCIES"
-This script requires the Apple program \fBafconvert\fR as well as the third party
-software program \fBnormalize\fR.  Afconvert should come with every \s-1OSX\s0
-installation and normalize is available for free via \s-1GPL\s0. Generally, it should
-be installed to /usr/local/bin but it can be installed anywhere so long as its
-location is given in dra.conf.
+See the documentation for dra-video under this section.
 .SH "AUTHOR"
 .IX Header "AUTHOR"
 Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
-.PP
-Travis Gregg
 .SH "LICENCE AND COPYRIGHT"
 .IX Header "LICENCE AND COPYRIGHT"
 Copyright 2012, the Trustees of Indiana University.

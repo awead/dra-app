@@ -399,9 +399,9 @@ foreach my $dvd (@dvdFiles) {
     );
 
     if ($err) {
-        DRA::logger( 
+        DRA::logger(
             "DVD file copy failed -- see error log",
-            $projectLogPath 
+            $projectLogPath
         );
         push @errors, $err;
     }
@@ -409,9 +409,9 @@ foreach my $dvd (@dvdFiles) {
     DRA::logger("Computing md5 sums", $projectLogPath);
     my ($md5, $md5err) = DRA::createMD5($source,$dvd);
     if ($md5err) {
-        DRA::logger( 
+        DRA::logger(
             "MD5 creation failed -- see error log",
-            $projectLogPath 
+            $projectLogPath
         );
         push @errors, $md5err;
     }
@@ -437,7 +437,7 @@ foreach my $dvd (@dvdFiles) {
 
     DRA::logger("... done, removing placholder file", $projectLogPath);
     DRA::clearLog($errorLogPath);
-       
+
 }
 
 # Check transfer of DVD files to audio server
@@ -557,9 +557,9 @@ my $err = DRA::sendSCP(
 );
 
 if ($err) {
-    DRA::logger( 
+    DRA::logger(
         "Failed to copy video log to remote server",
-        $projectLogPath 
+        $projectLogPath
     );
     push @errors, $err;
 }
@@ -840,8 +840,8 @@ B<dra-video [-help] [-f] [video.conf options] [project_directory]>
 
 =head1 REQUIRED ARGUMENTS
 
-A B<project directory> is required for the script to run. This must be the full
-path the directory.  For example:
+A B<project directory> is required for the script to run. This must be the
+full path the directory.  For example:
 
 B<dra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
@@ -849,10 +849,11 @@ B<dra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234>
 
 B<-help> Displays brief synopsis of usage.
 
-B<-f> Force flag.  The project will be transferred regardless of any errors
-or if the concert was successfully sent at an earlier time.
+B<-f> Force flag.  The project will be transferred regardless of any errors or
+if the concert was successfully sent at an earlier time.
 
-B<video.conf> Any setting from the video.conf file may be passed to the script at runtime in the format:
+B<video.conf> Any setting from the video.conf file may be passed to the script
+at runtime in the format:
 
 -[variable name] [value]
 
@@ -860,52 +861,65 @@ Example:
 
 B<dra-video -email joebob@indiana.edu [directory]>
 
-Will execute the script overriding the email address specified in video.conf with joebob@indiana.edu
+Will execute the script overriding the email address specified in video.conf
+with joebob@indiana.edu
 
 =head1 DESCRIPTION
 
-This script works in conjunction with dra-transfer to coordinate transfers of video files
-to the main dra server and to MDSS. Whereas dra-transfer and dra-mdss are intended to be run
-from a single machine or server where audio data is "pulled" from different workstations, dra-video is
-designed to be run on multiple workstations where video data is "pushed" to both
-the main dra server and mdss.
+This script works in conjunction with dra-transfer to coordinate transfers of
+video files to the main dra server and to MDSS. Whereas dra-transfer and
+dra-mdss are intended to be run from a single machine or server where audio
+data is "pulled" from different workstations, dra-video is designed to be run
+on multiple workstations where video data is "pushed" to both the main dra
+server and mdss.
 
-Processing a project directory will take two executions of the dra-video script.  On the first
-pass, the script will first check for properly named files and folders.  If these are correct, it
-will next create a text listing of files and send them to the main dra server.  A corresponding
-project directory will already exist on the main dra server with any relevant audio data.  Once
-this file listing is copied to the server, the dra-transfer script will be able to complete its
-transfer of audio data to Variations and MDSS.  See the documentation for dra-transfer and
-dra-mdss for more information.
+Processing a project directory will take two executions of the dra-video
+script.  On the first pass, the script will first check for properly named
+files and folders.  If these are correct, it will next create a text listing
+of files and send them to the main dra server.  A corresponding project
+directory will already exist on the main dra server with any relevant audio
+data.  Once this file listing is copied to the server, the dra-transfer script
+will be able to complete its transfer of audio data to Variations and MDSS.
+See the documentation for dra-transfer and dra-mdss for more information.
 
-On the second pass of the script, dra-video logs into the main dra server to determine if both
-dra-transfer and dra-mdss have completed successfully. Upon the successful complete of both
-those scripts, dra-video will transfer dvd image files to the main dra server, and then
-transfer all video files to MDSS.  Individual video files are transferred via HSI, and are
-re-downloaded to verify md5 sums.  Folders of video files are transferred via HTAR.
+On the second pass of the script, dra-video logs into the main dra server to
+determine if both dra-transfer and dra-mdss have completed successfully. Upon
+the successful complete of both those scripts, dra-video will transfer dvd
+image files to the main dra server, and then transfer all video files to MDSS.
+ Individual video files are transferred via HSI, and are re-downloaded to
+verify md5 sums.  Folders of video files are transferred via HTAR.
 
-The last step of the script is to copy the video transfer log to the dra server for additional
-storage.
+The last step of the script is to copy the video transfer log to the dra
+server for additional storage.
 
 =head1 DIAGNOSTICS
 
+Upon successful completion of the script, dra-video returns no output.
+Otherwise, errors are reported to STDOUT as well as an error log file in the
+project log directory.  Additional information about the scripts overall
+progress is written to a script-level log file under the script log directory.
+ By default, this is the logs directory in the application's home directory.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
 A properly configured video.conf file should be sufficient for dra-video
-script to run.
+script to run. The format is the same as the dra.conf file and has many
+duplicated values. However, there is no shared information in either of the
+configuration files.  So any relevant changes to dra.conf must also be
+duplicated in video.conf and vice versa.
 
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.
+The DRA_HOME environment variable is required and can be set on a per-user
+basis or at execution time.
 
 =head1 DEPENDENCIES
 
 HTAR and HSI are required to send the files to MDSS.  These applications are
-available through IU's mass datastore service.  See http://kb.iu.edu/data/auvo.html
-for the latest client builds available.
+available through IU's mass datastore service.  See
+http://kb.iu.edu/data/auvo.html for the latest client builds available.
 
-You will also need to create kerberos keytab files to enable automate access to the mdss account.
-For more information on creating keytab files, see http://kb.iu.edu/data/avdb.html.
+You will also need to create kerberos keytab files to enable automate access
+to the mdss account. For more information on creating keytab files, see
+http://kb.iu.edu/data/avdb.html.
 
 =head1 AUTHOR
 

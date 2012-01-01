@@ -161,7 +161,7 @@ if (%errors) {
 
     DRA::logger("DRA video run complete, but with errors", $logFile);
     print "dra-video-run finished with the following errors:\n\n";
-    
+
     foreach my $error ( keys %errors ) {
         print $error . ":\n" . $errors{$error};
     }
@@ -195,12 +195,12 @@ sub error {
         print "Invalid option\n";
         &main::help;
     }
-    
+
     exit 1;
 }
 
 sub help {
-    print "Usage: dra-video-run [-help] [-f] [video.conf options] \n";
+    print "Usage: dra-video-run [-help] [video.conf options] \n";
 }
 
 
@@ -208,62 +208,60 @@ __END__
 
 =head1 DRA-VIDEO-RUN
 
-dra-video - Transfers video files to local server and MDSS
+dra-video-run - Executes dra-video on multiple project directories
 
 =head1 VERSION
 
-This documentation refers to dra-video version 2.1.
+This documentation refers to dra-video version 2.1
 
 =head1 USAGE
 
-B<dra-video [-help] [-f] [video.conf options] [project_directory]>
+B<dra-video-run [-help] [-f] [video.conf options]>
 
 =head1 REQUIRED ARGUMENTS
 
-A B<project directory> is required for the script to run. This must be the full
-path the directory.  For example:
-
-B<dra-video /Volumes/audio/Concerts/2010_fall/20100923vab1234>
+None
 
 =head1 OPTIONS
 
 B<-help> Displays brief synopsis of usage.
 
-B<-f> Force flag.  The project will be transferred regardless of any errors 
-or if the concert was successfully sent at an earlier time.
- 
-B<video.conf> Any setting from the video.conf file may be passed to the script at runtime in the format:
+B<video.conf> Any setting from the video.conf file may be passed to the script
+at runtime in the format:
 
 -[variable name] [value]
 
 Example:
 
-B<dra-video -email joebob@indiana.edu [directory]>
+B<dra-video-run -email joebob@indiana.edu [directory]>
 
-Will execute the script overriding the email address specified in video.conf with joebob@indiana.edu
+Will execute the script overriding the email address specified in video.conf
+with joebob@indiana.edu
 
 =head1 DESCRIPTION
 
+This script gathers a list of project directories under one or more parent
+directories listed in the video.conf file.  dra-video-run then calls dra-video
+on each of these projects directories individually and reports on the outcome
+of each one at the completion of the script.
+
+The script has its audio counterpart in dra-run, except that dra-video-run is
+simpler and no additional procedures are performed other than executing
+dra-video on each project directory. Like dra-run, dra-notify is used in
+conjunction with dra-video-run to email the results of processed project
+directories to individuals specified in the dra.conf file.
 
 =head1 DIAGNOSTICS
 
+See the documentation for dra-video under this section.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-A properly configured video.conf file should be sufficient for dra-video
-script to run.
-
-The DRA_HOME environment variable is required and can be set on a per-user basis
-or at execution time.
+See the documentation for dra-video under this section.
 
 =head1 DEPENDENCIES
 
-HTAR and HSI are required to send the files to MDSS.  These applications are
-available through IU's mass datastore service.  See http://kb.iu.edu/data/auvo.html
-for the latest client builds available.
-
-You will also need to create kerberos keytab files to enable automate access to the mdss account.
-For more information on creating keytab files, see http://kb.iu.edu/data/avdb.html.
+See the documentation for dra-video under this section.
 
 =head1 AUTHOR
 
@@ -271,6 +269,6 @@ Adam Wead     awead@indiana.edu, amsterdamos@gmail.com
 
 =head1 LICENCE AND COPYRIGHT
 
-Copyright 2011, the Trustees of Indiana University.
+Copyright 2012, the Trustees of Indiana University.
 
 =cut

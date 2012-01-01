@@ -5,3 +5,5 @@ pod2man ../bin/dra-mdss > ../man/man1/dra-mdss.1
 pod2man ../bin/dra-notify > ../man/man1/dra-notify.1 
 pod2man ../bin/dra-run > ../man/man1/dra-run.1 
 pod2man ../bin/dra-transfer > ../man/man1/dra-transfer.1 
+pod2man ../bin/dra-video > ../man/man1/dra-video.1 
+pod2man ../bin/dra-video-run > ../man/man1/dra-video-run.1 
