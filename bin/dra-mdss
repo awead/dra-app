@@ -286,8 +286,10 @@ foreach my $pfile (@pfiles) {
     #  1. is in our exclude list
     #  2. is named access -- that's dealt with later
     #  3. has already been renamed
+    #  4. is named video - that's just a placeholder
     if (    ($exclude !~ /$pfile/)
         and ($pfile   !~ /^access$/)
+        and ($pfile   !~ /^video$/)
         and ($pfile   !~ /^$data->{'prefix'}/)
     ) {
 
