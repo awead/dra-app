@@ -1041,47 +1041,6 @@ sub checkMD5 {
 
 
 
-# -------------------------------------------------------------------------
-# Name:    sendToBurnFolder
-# Desc:    Copies designated wave files to the designated folder for burning
-#          to CD
-# Inputs:  
-# Outputs: 
-# -------------------------------------------------------------------------
-#sub sendToBurnFolder {
-#
-# $concertType = $details->{info}->{genre};
-## The following was used to filter out Graduate recital since we didn't burn them to CD. It is commented out to send all concerts to be burned. 20090629-TEG
-## if (($concertType eq "Graduate Recital") or ($concertType eq "Artist Diploma") or ($concertType eq "Graduate Lecture/Recital") or ($concertType eq "Graduate Chamber Recital")) {
-##  open(ToBeBurnedLog, ">>$sentToBeBurnedLogPath") or die "Unable to open $sentToBeBurnedLogPath: $! \n";
-##   print ToBeBurnedLog $currentTime . ":\t Project genre is $concertType, no burn needed\n";
-##  close(ToBeBurnedLog);
-## }
-# if (!-e $sentToBeBurnedLogPath) { # and ($concertType ne "Graduate Recital")) {        # If the concert hasn't been sent to be burned, do so...
-#  local $mkDir = "mkdir -p " . $needToBeBurnedPath . $datedDir;
-#  `$mkDir`;
-#  getCurrentTime;
-#  open(ToBeBurnedLog, ">>$sentToBeBurnedLogPath") or die "Unable to open $sentToBeBurnedLogPath: $! \n";
-#   print ToBeBurnedLog $currentTime . ":\t Created project folder\n";
-#   print ToBeBurnedLog $currentTime . ":\t Copying all wavs\n";
-#  close(ToBeBurnedLog);
-##  local $cpCommand = "cp " . $accessDir . "*.wav " . $needToBeBurnedPath . $datedDir . "\/";
-##  `$cpCommand`;
-#  foreach $accessDesiredExt (@requiredAccessFilesTypes, "wav", "img") {
-#   getCurrentTime;
-#   local $cpCommand = "cp " . $accessDir . "*." . $accessDesiredExt . " " . $needToBeBurnedPath . $datedDir . "\/";
-#   `$cpCommand`;
-#   open(ToBeBurnedLog, ">>$sentToBeBurnedLogPath") or die "Unable to open $sentToBeBurnedLogPath: $! \n";
-#    print ToBeBurnedLog $currentTime . ":\t Copied all " . $accessDesiredExt . "\n";
-#   close(ToBeBurnedLog);
-#  }
-# }
-#}
-#}
-
-
-
-
 
 # -------------------------------------------------------------------------
 # Name:    getMDSSnames
