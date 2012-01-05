@@ -675,20 +675,17 @@ sub checkSubdirectories {
         my $path = Path::Class::Dir->new($root, $item);
         if ( -d $path ) {
             
-            my @parts = split /_/, $item;
-            if (     (scalar @parts == 1) 
-                 and (($item !~ /access/) or ($item !~ /video/)) )
-            {
-                my $message = "$item - misnamed or incorrect separator (_)";
-                push @errors, $message;
-            }
+            unless ($item =~ /access/ or $item =~ /video/) {
+                my @parts = split /_/, $item;
+                if (scalar @parts == 1) {
+                    my $message = "$item - misnamed or incorrect separator (_)";
+                    push @errors, $message;
+                }
 
-            if (     (scalar @parts < 3) 
-                 and ($parts[0] !~ /$id/) 
-                 and ($item !~ /access/) ) 
-            {
-                my $message = "$item - does not begin with Variations ID";
-                push @errors, $message;
+                if ((scalar @parts < 3) and ($parts[0] !~ /$id/)) {
+                    my $message = "$item - does not begin with Variations ID";
+                    push @errors, $message;
+                }
             }
 
         }
@@ -1044,47 +1041,6 @@ sub checkMD5 {
 
 
 
-# -------------------------------------------------------------------------
-# Name:    sendToBurnFolder
-# Desc:    Copies designated wave files to the designated folder for burning
-#          to CD
-# Inputs:  
-# Outputs: 
-# -------------------------------------------------------------------------
-#sub sendToBurnFolder {
-#
-# $concertType = $details->{info}->{genre};
-## The following was used to filter out Graduate recital since we didn't burn them to CD. It is commented out to send all concerts to be burned. 20090629-TEG
-## if (($concertType eq "Graduate Recital") or ($concertType eq "Artist Diploma") or ($concertType eq "Graduate Lecture/Recital") or ($concertType eq "Graduate Chamber Recital")) {
-##  open(ToBeBurnedLog, ">>$sentToBeBurnedLogPath") or die "Unable to open $sentToBeBurnedLogPath: $! \n";
-##   print ToBeBurnedLog $currentTime . ":\t Project genre is $concertType, no burn needed\n";
-##  close(ToBeBurnedLog);
-## }
-# if (!-e $sentToBeBurnedLogPath) { # and ($concertType ne "Graduate Recital")) {        # If the concert hasn't been sent to be burned, do so...
-#  local $mkDir = "mkdir -p " . $needToBeBurnedPath . $datedDir;
-#  `$mkDir`;
-#  getCurrentTime;
-#  open(ToBeBurnedLog, ">>$sentToBeBurnedLogPath") or die "Unable to open $sentToBeBurnedLogPath: $! \n";
-#   print ToBeBurnedLog $currentTime . ":\t Created project folder\n";
-#   print ToBeBurnedLog $currentTime . ":\t Copying all wavs\n";
-#  close(ToBeBurnedLog);
-##  local $cpCommand = "cp " . $accessDir . "*.wav " . $needToBeBurnedPath . $datedDir . "\/";
-##  `$cpCommand`;
-#  foreach $accessDesiredExt (@requiredAccessFilesTypes, "wav", "img") {
-#   getCurrentTime;
-#   local $cpCommand = "cp " . $accessDir . "*." . $accessDesiredExt . " " . $needToBeBurnedPath . $datedDir . "\/";
-#   `$cpCommand`;
-#   open(ToBeBurnedLog, ">>$sentToBeBurnedLogPath") or die "Unable to open $sentToBeBurnedLogPath: $! \n";
-#    print ToBeBurnedLog $currentTime . ":\t Copied all " . $accessDesiredExt . "\n";
-#   close(ToBeBurnedLog);
-#  }
-# }
-#}
-#}
-
-
-
-
 
 # -------------------------------------------------------------------------
 # Name:    getMDSSnames
@@ -1155,18 +1111,21 @@ sub getMDSSnames {
             }
             else {
 
-                # Add any directory not called "access" to tar hash
-                # Check that the file hasn't been renamed already
-                if ($elem !~ /^$prefix/) {
-                    my $newname
-                        = $prefix 
-                        . "_" 
-                        . $elem 
-                        . ".tar";
-                    push @tar, $newname;
-                }
-                else {
-                    push @tar, $elem;
+                # Ignore the video directory
+                unless ($elem =~ /^video$/ ) {
+                    # Add any directory not called "access" to tar hash
+                    # Check that the file hasn't been renamed already
+                    if ($elem !~ /^$prefix/) {
+                        my $newname
+                            = $prefix 
+                            . "_" 
+                            . $elem 
+                            . ".tar";
+                        push @tar, $newname;
+                    }
+                    else {
+                        push @tar, $elem;
+                    }
                 }
 
             }
