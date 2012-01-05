@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN"
+"http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+    <dict>
+        <key>Label</key>
+        <string>edu.indiana.music.videorun</string>
+        <key>LowPriorityIO</key>
+        <true/>
+        <key>EnvironmentVariables</key>
+        <dict>
+            <key>DRA_HOME</key>
+            <string>/Users/admin/Applications/dra-app</string>
+        </dict>
+        <key>ProgramArguments</key>
+        <array>
+            <string>/Users/admin/Applications/dra-app/bin/dra-notify</string>
+            <string>-name</string>
+            <string>Video-transfer</string>
+            <string>bin/dra-video-run</string>
+        </array>
+        <key>ServiceDescription</key>
+        <string>Executes dra-video-run</string>
+        <key>StartCalendarInterval</key>
+        <dict>
+            <key>Hour</key>
+            <integer>1</integer>
+            <key>Minute</key>
+            <integer>5</integer>
+        </dict>
+    </dict>
+</plist>
+
