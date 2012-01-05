@@ -675,20 +675,17 @@ sub checkSubdirectories {
         my $path = Path::Class::Dir->new($root, $item);
         if ( -d $path ) {
             
-            my @parts = split /_/, $item;
-            if (     (scalar @parts == 1) 
-                 and (($item !~ /access/) or ($item !~ /video/)) )
-            {
-                my $message = "$item - misnamed or incorrect separator (_)";
-                push @errors, $message;
-            }
+            unless ($item =~ /access/ or $item =~ /video/) {
+                my @parts = split /_/, $item;
+                if (scalar @parts == 1) {
+                    my $message = "$item - misnamed or incorrect separator (_)";
+                    push @errors, $message;
+                }
 
-            if (     (scalar @parts < 3) 
-                 and ($parts[0] !~ /$id/) 
-                 and ($item !~ /access/) ) 
-            {
-                my $message = "$item - does not begin with Variations ID";
-                push @errors, $message;
+                if ((scalar @parts < 3) and ($parts[0] !~ /$id/)) {
+                    my $message = "$item - does not begin with Variations ID";
+                    push @errors, $message;
+                }
             }
 
         }
@@ -1155,18 +1152,21 @@ sub getMDSSnames {
             }
             else {
 
-                # Add any directory not called "access" to tar hash
-                # Check that the file hasn't been renamed already
-                if ($elem !~ /^$prefix/) {
-                    my $newname
-                        = $prefix 
-                        . "_" 
-                        . $elem 
-                        . ".tar";
-                    push @tar, $newname;
-                }
-                else {
-                    push @tar, $elem;
+                # Ignore the video directory
+                unless ($elem =~ /^video$/ ) {
+                    # Add any directory not called "access" to tar hash
+                    # Check that the file hasn't been renamed already
+                    if ($elem !~ /^$prefix/) {
+                        my $newname
+                            = $prefix 
+                            . "_" 
+                            . $elem 
+                            . ".tar";
+                        push @tar, $newname;
+                    }
+                    else {
+                        push @tar, $elem;
+                    }
                 }
 
             }
