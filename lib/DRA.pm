@@ -1697,9 +1697,11 @@ sub sshCommand {
     my $sshKey  = $arg_ref->{sshKey};
     my $host    = $arg_ref->{host};
     my $command = $arg_ref->{command};
+    my $opts    = $arg_ref->{opts};
 
+    my @args   = split / /, $opts;
     my $hostString = $user . "@" . $host;
-    my @args = ( "-i", $sshKey, $hostString, $command);
+    push @args, "-i", $sshKey, $hostString, $command;
     my ($stdout, $stderr) = DRA::runQuietCommand("ssh", @args);
 
     return ($stdout, $stderr);

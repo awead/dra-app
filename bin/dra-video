@@ -724,6 +724,7 @@ sub remoteCommand {
         sshKey  => $sshKeyPath,
         host    => $draServer,
         command => $command,
+        opts    => $sshOpts,
         }
     );
 
