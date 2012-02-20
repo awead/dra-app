@@ -48,6 +48,7 @@ $config->define( "copiedLog=s" );
 $config->define( "draKey=s" );
 $config->define( "draServer=s" );
 $config->define( "draUser=s" );
+$config->define( "draGroup=s" );
 $config->define( "errorLog=s" );
 $config->define( "hallList=s" );
 $config->define( "hsi=s" );
@@ -91,6 +92,8 @@ my $videoLog           = $config->get( "videoLog"      );
 my $logDir             = $config->get( "logDir"        );
 my $videoDirs          = $config->get( "videoDirs"     );
 my $blockList          = $config->get( "localBlock"    );
+my $user               = $config->get( "draUser"       );
+my $group              = $config->get( "draGroup"      );
 
 # Initialize command line switches
 my $force        = $config->get("f");
@@ -155,6 +158,9 @@ foreach my $projectDir (@sourceDirs) {
     }
 
 }
+
+# Change permissions on project directory
+DRA::setPermissions($projectDir,$user,$group);
 
 # Report any errors to stdout
 if (%errors) {

@@ -48,6 +48,7 @@ $config->define( "copiedLog=s" );
 $config->define( "draKey=s" );
 $config->define( "draServer=s" );
 $config->define( "draUser=s" );
+$config->define( "draGroup=s" );
 $config->define( "errorLog=s" );
 $config->define( "hallList=s" );
 $config->define( "hsi=s" );
@@ -329,6 +330,9 @@ else {
 
     &main::evaluateErrors;
 }
+
+
+die;
 
 
 # Log in to DRA server and determine status of project
