@@ -45,10 +45,11 @@ $config->define( "audioDir=s" );
 $config->define( "conversionErrorLog=s" );
 $config->define( "conversionLog=s" );
 $config->define( "copiedLog=s" );
+$config->define( "appUser=s" );
+$config->define( "appGroup=s" );
 $config->define( "draKey=s" );
 $config->define( "draServer=s" );
 $config->define( "draUser=s" );
-$config->define( "draGroup=s" );
 $config->define( "errorLog=s" );
 $config->define( "hallList=s" );
 $config->define( "hsi=s" );
@@ -92,8 +93,8 @@ my $videoLog           = $config->get( "videoLog"      );
 my $logDir             = $config->get( "logDir"        );
 my $videoDirs          = $config->get( "videoDirs"     );
 my $blockList          = $config->get( "localBlock"    );
-my $user               = $config->get( "draUser"       );
-my $group              = $config->get( "draGroup"      );
+my $user               = $config->get( "appUser"       );
+my $group              = $config->get( "appGroup"      );
 
 # Initialize command line switches
 my $force        = $config->get("f");
