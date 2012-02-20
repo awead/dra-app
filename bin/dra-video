@@ -333,9 +333,6 @@ else {
 }
 
 
-die;
-
-
 # Log in to DRA server and determine status of project
 #
 # Script will not continue until the project has been completely transferred
@@ -759,6 +756,7 @@ sub remoteQuietCommand {
         sshKey  => $sshKeyPath,
         host    => $draServer,
         command => $command,
+        opts    => $sshOpts,
         }
     );
 
