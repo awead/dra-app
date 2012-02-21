@@ -160,8 +160,11 @@ foreach my $projectDir (@sourceDirs) {
 
 }
 
-# Change permissions on project directory
-DRA::setPermissions($projectDir,$user,$group);
+# Change permissions on project directories
+DRA::logger("Setting permissions on each project directory", $logFile);
+foreach my $projectDir (@sourceDirs) {
+    DRA::setPermissions($projectDir,$user,$group);
+}
 
 # Report any errors to stdout
 if (%errors) {
