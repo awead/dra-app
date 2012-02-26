@@ -161,10 +161,10 @@ foreach my $projectDir (@sourceDirs) {
 }
 
 # Change permissions on project directories
-DRA::logger("Setting permissions on each project directory", $logFile);
-foreach my $projectDir (@sourceDirs) {
-    DRA::setPermissions($projectDir,$user,$group);
-}
+#DRA::logger("Setting permissions on each project directory", $logFile);
+#foreach my $projectDir (@sourceDirs) {
+#    DRA::setPermissions($projectDir,$user,$group);
+#}
 
 # Report any errors to stdout
 if (%errors) {
@@ -267,7 +267,15 @@ See the documentation for dra-video under this section.
 
 =head1 CONFIGURATION AND ENVIRONMENT
 
-See the documentation for dra-video under this section.
+One important difference between this script and other run scripts in the 
+DRA application, is that dra-video-run should be executed by the user with
+the same rights to the folders and files, not the root user.  The dra-run
+script, for example, was designed to be run by root, whereas dra-video-run
+was not.  This only makes a difference when determining how the plist
+file should be used under launchd.
+
+For more information, see the manual pages for launchd and 
+the documentation for dra-video under this section.
 
 =head1 DEPENDENCIES
 

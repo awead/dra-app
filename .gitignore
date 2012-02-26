@@ -2,3 +2,4 @@ logs/*
 mount/*
 *.swp
 mount/*
+nohup.out
