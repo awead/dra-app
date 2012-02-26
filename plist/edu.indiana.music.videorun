@@ -5,8 +5,6 @@
     <dict>
         <key>Label</key>
         <string>edu.indiana.music.videorun</string>
-        <key>LowPriorityIO</key>
-        <true/>
         <key>EnvironmentVariables</key>
         <dict>
             <key>DRA_HOME</key>
