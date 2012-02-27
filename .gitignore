@@ -3,3 +3,5 @@ mount/*
 *.swp
 mount/*
 nohup.out
+HPSS_audio_audiopro.keytab
+variations.key
