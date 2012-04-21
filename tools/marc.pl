@@ -167,6 +167,15 @@ $MDSSFileListingPath
 
 print DEBUG "Path to the MDSS file listing is $MDSSFileListingPath \n" if ($DEBUG);
 
+# Determine location of _MDSSVideoFileNames.txt
+$MDSSVideoFileListingPath 
+    = $path 
+    . "/access\/logs\/" 
+    . $varID 
+    . "_MDSSVideoFileNames.txt";
+
+print DEBUG "Path to the MDSS video file listing is $MDSSVideoFileListingPath \n" if ($DEBUG);
+
 # Find the access files from which we get the track metadata
 $findAccessWAVFiles = "find " . $path . "/access -name " . $varID . "_access\*.wav";
 @accessWAVFiles = `$findAccessWAVFiles`;
@@ -286,6 +295,22 @@ $MDSSAccessFiles = $MDSSAllFilesParts[1];
 $MDSSAccessFiles =~ s/\n\s/\n/g;
 print DEBUG "MDSSAcessFiles are --" . $MDSSAccessFiles . "--\n" if $DEBUG;  
 
+# Check for video file
+if (-e $MDSSVideoFileListingPath) {
+    open (READVIDEOMDSS, $MDSSVideoFileListingPath) 
+        || (die "Can't open file $MDSSVideoFileListingPath\n");
+    @MDSSVideoFiles = <READVIDEOMDSS>;
+    close (READVIDEOMDSS);
+
+    # Clean up
+    $MDSSVideoFilesLine = join ("", @MDSSVideoFiles);
+    chomp $MDSSVideoFilesLine;
+    $MDSSVideoFilesLine =~ s/\r//g;
+    if ($DEBUG) {
+        print DEBUG "Video files line is --" . $MDSSVideoFilesLine . "--\n";
+    }
+}
+
 
 # Create the 008 field
 # 
@@ -376,6 +401,7 @@ if ( $info->{'genre'} =~ m/orchestra|ensemble|choir|singers|trio|quartet|quintet
 	print MARC ".505." . " 0 " . "|a" . $contentsLine . "\n";
 	print MARC ".500." . "   " . "|a" . $MDSSPresFiles . "\n";
 	print MARC ".500." . "   " . "|a" . $MDSSAccessFiles . "\n";
+	print MARC ".500." . "   " . "|a" . $MDSSVideoFilesLine . "\n" if $MDSSVideoFilesLine;
 	print MARC ".700." . "   " . "|a" . diacritFix( $info->{'artist'} ) . "\n";
 	print MARC ".810." . " 2 " . "|aIndiana University Jacobs School of Music.|tProgram ;|v" . $info->{'subject'} . "\n";
 	print MARC ".856." 
@@ -405,6 +431,7 @@ if ( $info->{'genre'} =~ m/orchestra|ensemble|choir|singers|trio|quartet|quintet
 	print MARC ".505." . " 0 " .    "|a" . $contentsLine . "\n";
 	print MARC ".500." . "   " .    "|a" . $MDSSPresFiles . "\n";
 	print MARC ".500." . "   " .    "|a" . $MDSSAccessFiles . "\n";
+	print MARC ".500." . "   " . "|a" . $MDSSVideoFilesLine . "\n" if $MDSSVideoFilesLine;
 	print MARC ".810." . " 2 " .    "|aIndiana University Jacobs School of Music.|tProgram ;|v" . $info->{'subject'} . "\n";
 	print MARC ".856." 
         . " 40" 
